@@ -173,11 +173,11 @@ def flDetector(args, total_clients, entrenamento, original_clients):
         args.lr) + ", batch_size: " + str(args.batch_size) + ", nworkers: " + str(
         args.nworkers) + ", nbyz: " + str(args.nbyz)
 
-    file_path = os.path.join(args.home_path, args.timestamp, args.byz_type, args.aggregation, str(entrenamento))
-    if not os.path.exists(file_path):
-        os.makedirs(file_path)
-    precision_path = file_path + '/Precision.txt'
-    ataques_path = file_path + '/Ataques_Detectados.txt'
+    path = os.path.join(args.timestamp, args.home_path, args.byz_type, args.aggregation, str(entrenamento))
+    if not os.path.exists(path):
+        os.makedirs(path)
+    precision_path = path + '/Precision.txt'
+    ataques_path = path + '/Ataques_Detectados.txt'
     with (open(precision_path, 'w+')) as f:
         f.write(para_string + '\n')
 
@@ -336,15 +336,15 @@ def flDetector(args, total_clients, entrenamento, original_clients):
                 # SIN SILUETA
                 if args.silhouette == 0.0:
                     det = detection_Siluetas.detectarMaliciososOriginal(mal_scores, args, para_string, e, total_clients,
-                                                                        undetected_byz_index, file_path, graf=True)
+                                                                        undetected_byz_index, path, graf=True)
                 # CON SILUETA
                 else:
                     det = detection_Siluetas.detectarMaliciososOriginal2(mal_scores, args, para_string, e,
                                                                          total_clients,
-                                                                         undetected_byz_index, file_path, graf=True)
+                                                                         undetected_byz_index, path, graf=True)
                 if det is not None:
                     precision_final(precision_path, train_acc_list, test_data_loader, net, device, e, malicious_score,
-                                    file_path)
+                                    path)
                     return det
 
             # ACTUALIZAR O PESO E O GRADIENTE
@@ -388,7 +388,7 @@ def flDetector(args, total_clients, entrenamento, original_clients):
             if (e + 1) == args.nepochs:
                 test_accuracy = evaluate_accuracy(test_data_loader, net, device)
                 print("Epoch %02d. Test_acc %0.4f" % (e, test_accuracy))
-                with open(file_path + '/score1.csv', 'w', newline='') as csvFile:
+                with open(path + '/score1.csv', 'w', newline='') as csvFile:
                     writer = csv.writer(csvFile)
                     writer.writerows(malicious_score)
 

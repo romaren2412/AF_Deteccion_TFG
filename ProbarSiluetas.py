@@ -151,19 +151,9 @@ def leer_archivo_txt(ruta_carpeta):
     return None
 
 
-def debuxar(bizantinos, benignos):
-    plt.plot(bizantinos, label='Bizantinos', linestyle='-', color='red', marker='o')
-    plt.plot(benignos, label='Benignos', linestyle='--', color='green', marker='o')
-    # Añadir etiquetas y leyenda
-    plt.xlabel('Ataque identificado')
-    plt.xticks(np.arange(0, len(bizantinos), 1))
-    plt.title('Evolución de % de tipo de clientes')
-    plt.legend()
-    plt.savefig(ruta_carpeta + '/EvolucionClientes.png')
-    plt.show()
-
-
 def debuxar_porcentaxes(entrenamientos, bizantinos_inic):
+    plt.clf()
+
     bizantinos = []
     benignos = []
     for e in entrenamientos:
@@ -178,10 +168,12 @@ def debuxar_porcentaxes(entrenamientos, bizantinos_inic):
     plt.title('Evolución de % de tipo de clientes')
     plt.legend()
     plt.savefig(ruta_carpeta + '/EvolucionClientes.png')
-    plt.show()
+    #plt.show()
 
 
 def debuxar_todo(entrenamientos, bizantinos_inic, silueta, marxe):
+    plt.clf()
+
     silhouettes = []
     biz_percent = []
     ben_percent = []
@@ -254,7 +246,39 @@ def debuxar_todo(entrenamientos, bizantinos_inic, silueta, marxe):
     # plt.xticks(np.arange(0, len(silhouettes), 1))
     plt.title('Evolución de % de tipo de clientes e siluetas')
     plt.savefig(ruta_carpeta + '/EvolucionSiluetas.png')
-    plt.show()
+    # plt.show()
+
+
+class CasoSilueta:
+    def __init__(self, silueta):
+        self.silueta = silueta
+        self.erros = 0
+        self.acertos = 0
+
+    def calculoErros(self, accuracies, silhouettes, marxe, recall):
+        for i in range(len(accuracies)):
+            # Eliminacións erróneas "evitables"
+            if accuracies[i] < (1 - marxe) and silhouettes[i] < self.silueta:
+                self.erros += 1
+            # Eliminacións acertadas "evitables"
+            elif accuracies[i] > (1 - marxe) and silhouettes[i] < self.silueta and recall[i] != -1:
+                self.acertos += 1
+
+    def imprimirInfo(self, silueta_real, accuracies, f):
+        if self.silueta == silueta_real:
+            f.write(f"--------\nSILUETA ACTUAL: {umbral_silueta}\n")
+            f.write(
+                f"Foron evitadas {self.erros} ({self.erros / len(accuracies) * 100}%) eliminacións erróneas\n")
+            f.write(
+                f"Foron evitadas {self.acertos} ({self.acertos / len(accuracies) * 100}%) eliminacións acertadas\n")
+            f.write("--------------------\n\n")
+        else:
+            f.write(f"No caso de establecer unha silueta de {self.silueta}:\n")
+            f.write(
+                f"Evitaríanse {self.erros} ({self.erros / len(accuracies) * 100}%) eliminacións erróneas\n")
+            f.write(f"Evitaríanse {self.acertos} ({self.acertos / len(accuracies) * 100}%)"
+                    f" eliminacións acertadas\n")
+            f.write("--------------------\n\n")
 
 
 def obter_datos(entrenamientos, marxe):
@@ -264,11 +288,6 @@ def obter_datos(entrenamientos, marxe):
     #   - Eliminacións acertadas evitadas (se silueta é distinto de 0)
     #   - Eliminacións erróneas evitables (observar eliminacións erróneas cunha silueta maior)
     #   - Eliminacións acertadas evitables (observar eliminacións acertadas cunha silueta maior)
-
-    erros_evitados = 0
-    acertos_evitados = 0
-    erros_evitables = 0
-    acertos_evitables = 0
     accuracies = []
     silhouettes = []
     recall = []
@@ -280,60 +299,22 @@ def obter_datos(entrenamientos, marxe):
             silhouettes.append(a.silhouette)
             recall.append(a.recall)
 
-    if umbral_silueta == 0:
-        with open(ruta_carpeta + '/Resumo.txt', 'w') as f:
-            for i in range(len(accuracies)):
-                f.write(f"Ataque {i} (acc: {accuracies[i]}, silhouette {silhouettes[i]})\n")
-                # Eliminacións erróneas "evitables"
-                if accuracies[i] < (1 - marxe) and silhouettes[i] < 0.7:
-                    erros_evitables += 1
-                # Eliminacións acertadas "evitables"
-                elif accuracies[i] > (1 - marxe) and silhouettes[i] < 0.7:
-                    acertos_evitables += 1
-            f.write("--------------------\n")
-            f.write("No caso de establecer unha silueta de 0.7:\n")
-            f.write(
-                f"Evitaríanse {erros_evitables} ({erros_evitables / len(accuracies) * 100}%) eliminacións erróneas\n")
-            f.write(f"Evitaríanse {acertos_evitables} ({acertos_evitables / len(accuracies) * 100}%)"
-                    f"eliminacións acertadas")
-    else:
-        #siluetas_opcionais = [i / 100 for i in range(int(umbral_silueta * 100) + 5, 100, 5)]
-        siluetas_opcionais = [i / 100 for i in range(70, 100, 5)]
-        with open(ruta_carpeta + '/Resumo.txt', 'w') as f:
-            # COA SILUETA ACTUAL
-            for i in range(len(accuracies)):
-                f.write(f"Ataque {i} (acc: {accuracies[i]}, silhouette {silhouettes[i]})\n")
+    siluetas_opcionais = [i / 100 for i in range(70, 100, 5)]
+    if umbral_silueta not in siluetas_opcionais:
+        siluetas_opcionais.append(umbral_silueta)
+        siluetas_opcionais.sort()
 
-                # Eliminacións erróneas "evitables"
-                if accuracies[i] < (1 - marxe) and silhouettes[i] < umbral_silueta:
-                    erros_evitados += 1
-                # Eliminacións acertadas "evitables"
-                elif accuracies[i] > (1 - marxe) and silhouettes[i] < umbral_silueta and recall[i] != -1:
-                    acertos_evitados += 1
+    with open(ruta_carpeta + '/Resumo.txt', 'w') as f:
+        # COA SILUETA ACTUAL
+        for i in range(len(accuracies)):
+            f.write(f"Ataque {i} (acc: {accuracies[i]}, silhouette {silhouettes[i]})\n")
 
-            f.write(f"\n--------\nSilueta actual: {umbral_silueta}\n")
-            f.write(
-                f"Foron evitadas {erros_evitados} ({erros_evitados / len(accuracies) * 100}%) eliminacións erróneas\n")
-            f.write(
-                f"Foron evitadas {acertos_evitados} ({acertos_evitados / len(accuracies) * 100}%) eliminacións acertadas\n")
-            f.write("--------------------\n\n")
+        f.write("\n--------\n")
 
-            for sil in siluetas_opcionais:
-                erros_evitables = 0
-                acertos_evitables = 0
-                for i in range(len(accuracies)):
-                    # Eliminacións erróneas "evitables"
-                    if accuracies[i] < (1 - marxe) and silhouettes[i] < sil:
-                        erros_evitables += 1
-                    # Eliminacións acertadas "evitables"
-                    elif accuracies[i] > (1 - marxe) and silhouettes[i] < sil and recall[i] != -1:
-                        acertos_evitables += 1
-                f.write("\n--------------------\n")
-                f.write(f"No caso de establecer unha silueta de {sil}:\n")
-                f.write(
-                    f"Evitaríanse {erros_evitables} ({erros_evitables / len(accuracies) * 100}%) eliminacións erróneas\n")
-                f.write(f"Evitaríanse {acertos_evitables} ({acertos_evitables / len(accuracies) * 100}%)"
-                        f" eliminacións acertadas\n")
+        for sil in siluetas_opcionais:
+            s = CasoSilueta(sil)
+            s.calculoErros(accuracies, silhouettes, marxe, recall)
+            s.imprimirInfo(umbral_silueta, accuracies, f)
 
 
 def probar(ruta_carpeta):
@@ -360,11 +341,9 @@ def probar(ruta_carpeta):
     obter_datos(entrenamientos, marxe)
 
 
-
-
 if __name__ == "__main__":
     # Ingresa la ruta de la carpeta que quieres analizar
-    ruta_global = 'ProbaSilueta/Datos/'
+    ruta_global = 'ProbaSilueta/Datos_v3/'
     subcarpetas_Silueta = [e for e in os.listdir(ruta_global) if os.path.isdir(os.path.join(ruta_global, e))]
     for silueta_XX in subcarpetas_Silueta:
         umbral_silueta = float(silueta_XX.split('_')[1]) / 100
@@ -373,5 +352,9 @@ if __name__ == "__main__":
                 ruta_carpeta = ruta_global + silueta_XX + '/' + ataque + '/' + aggr
                 print(f"Probando {ruta_carpeta}...")
                 if os.path.exists(ruta_carpeta):
+                    if os.path.exists(ruta_carpeta + '/EvolucionClientes.png'):
+                        os.remove(ruta_carpeta + '/EvolucionClientes.png')
+                    if os.path.exists(ruta_carpeta + '/EvolucionSiluetas.png'):
+                        os.remove(ruta_carpeta + '/EvolucionSiluetas.png')
                     probar(ruta_carpeta)
                     grafica(ruta_carpeta)

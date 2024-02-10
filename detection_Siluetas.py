@@ -1,13 +1,12 @@
 from detection import *
 
 
-def detectionAux(score, args, para_string, iter, clients, byz_undetected_index, path_file):
+def detectionAux(score, para_string, it, clients, byz_undetected_index, path_file):
     """
     Detecta ataques mediante clustering.
     :param score: vector da suma das últimas 10 puntuacións maliciosas
-    :param args: argumentos de entrada
     :param para_string: string para crear ficheiro de texto
-    :param iter: iteración na que se detecta o ataque
+    :param it: iteración na que se detecta o ataque
     :param clients: lista de clientes
     :param byz_undetected_index: índices dos clientes byzantinos non detectados
     """
@@ -70,7 +69,7 @@ def detectionAux(score, args, para_string, iter, clients, byz_undetected_index, 
     # Imprimir resultados en fichero de texto
     with open(path_file + '/Ataques_Detectados.txt', 'a+') as f:
         f.write("\n------\n" + para_string + "\n")
-        f.write("Stop at iteration: " + str(iter) + "\n")
+        f.write("Stop at iteration: " + str(it) + "\n")
         f.write("acc %0.4f; recall %0.4f; fpr %0.4f; fnr %0.4f;\n" % (acc, recall, fpr, fnr))
         f.write("detected_clients: " + str(detected_clients) + "\n")
         f.write("silhouette: " + str(silhouette) + "\n")
@@ -174,7 +173,7 @@ def detectarMaliciososOriginal(mal_scores, args, para_string, e, total_clients, 
 
     if detection1(mal_scores):
         print('Stop at iteration:', e)
-        det = detectionAux(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path_file)
+        det = detectionAux(mal_scores, para_string, e, total_clients, undetected_byz_index, path_file)
         if graf:
             grafica_gardar_byz(mal_scores, e, args.byz_type, path_grafica, undetected_byz_index)
         return det
