@@ -1,5 +1,4 @@
 import argparse
-import datetime
 from mnist_CNN import fl_detector
 
 

@@ -158,11 +158,10 @@ def full_trim_range(v, undetected_byz):
     return v
 
 
-def gaussian_attack_range(v, undetected_byz, epsilon=0.01):
+def gaussian_attack_range(v, undetected_byz):
     """
     :param v: lista de gradientes
     :param undetected_byz: lista de dispositivos byzantinos
-    :param epsilon:
     :return:
     """
     # A forma do primeiro gradiente é a forma de cada gradiente
@@ -276,11 +275,10 @@ def krum(v, f):
     return min_idx, krum_nd
 
 
-def dir_partial_krum_lambda_range(v, undetected_byz_index, epsilon=0.01):
+def dir_partial_krum_lambda_range(v, undetected_byz_index):
     """
     :param v: parámetros da rede
     :param undetected_byz_index: lista de dispositivos byzantinos
-    :param epsilon: parámetro de aleatoriedade
     :return:
     """
     vi_shape = v[0].shape
