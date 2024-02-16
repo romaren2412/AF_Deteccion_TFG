@@ -30,7 +30,8 @@ def simple_mean(old_gradients, param_list, net, lr, b, hvp=None):
             # DISTANCIA ENTRE GRADIENTES PREDITOS E NOVOS
             distancia = torch.norm(torch.cat(pred_grad, dim=1) - torch.cat(param_list, dim=1), dim=0).cpu().numpy()
 
-        # CÁLCULO DE DISTANCIAS E ÁREA BAIXO A CURVA ROC: MÉTRICA PARA AVALIAR A CALIDADE DUN MODELO DE CLASIFICACIÓN BINARIA
+        # CÁLCULO DE DISTANCIAS E ÁREA BAIXO A CURVA ROC:
+        # MÉTRICA PARA AVALIAR A CALIDADE DUN MODELO DE CLASIFICACIÓN BINARIA
         else:
             # DISTANCIA A: ENTRE GRADIENTES VELLOS E NOVOS
             distancia = torch.norm(torch.cat(old_gradients, dim=1) - torch.cat(param_list, dim=1), dim=0).cpu().numpy()
@@ -157,8 +158,7 @@ def median(old_gradients, param_list, net, lr, b, hvp=None):
         median_nd = median_nd.view(-1, 1)
     else:
         # Se hai un número par de dispositivos, a mediana é a media dos dous valores centrais
-        median_nd = torch.sort(torch.cat(param_list, dim=1), dim=-1)[0][:,
-                    len(param_list) // 2: len(param_list) // 2 + 1].mean(dim=-1, keepdim=True)
+        median_nd = torch.sort(torch.cat(param_list, dim=1), dim=-1)[0][:, len(param_list) // 2: len(param_list) // 2 + 1].mean(dim=-1, keepdim=True)
 
     # Actualizar modelo global
     idx = 0

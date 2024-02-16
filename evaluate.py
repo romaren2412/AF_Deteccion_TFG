@@ -1,5 +1,6 @@
 import torch
 
+
 def evaluate_accuracy(data_loader, model, device):
     """
         Evalúa la precisión del modelo en el conjunto de datos.

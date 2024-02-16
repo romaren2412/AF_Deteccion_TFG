@@ -1,55 +1,18 @@
-import argparse
 import csv
 import torch.nn as nn
 import torch.nn.init as init
-
-import detection_Siluetas
-import np_aggregation
-import datetime
-import time
-
-import clases_redes as cr
 import torchvision
 from torchvision import transforms
+
+
+import np_aggregation
+import clases_redes as cr
+
 
 from lbfgs import *
 from byzantine_range import *
 from detection import *
 from evaluate import *
-
-
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="dataset", default='mnist', type=str)
-    parser.add_argument("--bias", help="degree of non-IID to assign data to workers", type=float, default=0.1)
-    # parser.add_argument("--net", help="net", default='mlr', type=str, choices=['mlr', 'cnn', 'fcnn'])
-    parser.add_argument("--batch_size", help="batch size", default=32, type=int)
-    parser.add_argument("--lr", help="learning rate", default=0.0002, type=float)
-    parser.add_argument("--nworkers", help="# workers", default=100, type=int)
-    parser.add_argument("--nepochs", help="# epochs", default=500, type=int)
-    parser.add_argument("--gpu", help="index of gpu", default=0, type=int)
-    parser.add_argument("--seed", help="seed", default=41, type=int)
-    parser.add_argument("--nbyz", help="# byzantines", default=28, type=int)
-    parser.add_argument("--byz_type", help="type of attack", default='no', type=str,
-                        choices=['no', 'partial_trim', 'full_trim', 'mean_attack', 'full_mean_attack', 'gaussian',
-                                 'dir_partial_krum_lambda', 'dir_full_krum_lambda', 'label_flip', 'backdoor', 'dba',
-                                 'edge'])
-    parser.add_argument("--aggregation", help="aggregation rule", default='simple_mean', type=str,
-                        choices=['simple_mean', 'trim', 'krum', 'median'])
-
-    # Engadidas por Roi
-    parser.add_argument("--home_path", help="home path", default='', type=str)
-    parser.add_argument("--tipo_exec", help="tipo de execución", default='detect', type=str,
-                        choices=['detect', 'loop'])
-    parser.add_argument("--tipo_detect", help="tipo de detección", default=1, type=int,
-                        choices=[1, 2, 3])
-    parser.add_argument("--silhouette", help="medida de confianza necesaria (silhouette)", default=0.75,
-                        type=float)
-    # add timestamp
-    parser.add_argument("--timestamp", help="timestamp", default=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
-                        type=str)
-    return parser.parse_args()
 
 
 def select_byzantine_range(t):
@@ -94,7 +57,7 @@ def select_aggregation(t, old_gradients, param_list, net, lr, b, hvp=None):
         raise NotImplementedError
 
 
-def repartirDatos(train_data_loader, num_workers, device):
+def repartir_datos(args, train_data_loader, num_workers, device):
     # ASIGNACIÓN ALEATORIA DOS DATOS ENTRE OS CLIENTES
     # Semilla
     seed = args.seed
@@ -156,12 +119,13 @@ def precision_final(precision_path, train_acc_list, test_data_loader, net, devic
         writer.writerows(malicious_score)
 
 
-def flDetector(args, total_clients, entrenamento, original_clients):
+def fl_detector(args, total_clients, entrenamento, original_clients):
     """
     Detecta ataques mediante clustering.
     :param args: obxecto cos argumentos de entrada
     :param total_clients: lista cos clientes totais (a partir do segundo adestramento, os supostamente benignos)
     :param entrenamento: número de adestramento (para gardar os resultados no caso de repetir o adestramento desde 0)
+    :param original_clients: lista cos clientes orixinais (para gardar os resultados no caso de repetir o adestramento)
     :return:
     """
     # Decide el dispositivo de ejecución
@@ -274,7 +238,7 @@ def flDetector(args, total_clients, entrenamento, original_clients):
         ###################################################################################################
 
         # ASIGNACIÓN ALEATORIA DOS DATOS ENTRE OS CLIENTES
-        each_worker_data, each_worker_label = repartirDatos(train_data_loader, num_workers, device)
+        each_worker_data, each_worker_label = repartir_datos(args, train_data_loader, num_workers, device)
 
         ######################################################################################################
 
@@ -316,19 +280,7 @@ def flDetector(args, total_clients, entrenamento, original_clients):
 
             # CALCULAR HESSIAN VECTOR PRODUCT CON LBFGS (A PARTIR DA EPOCA 50)
             if e > 50:
-                inicio = time.time()
-                hvpGitHub = lbfgs(weight_record, grad_record, weight - last_weight)
-                medio = time.time()
-                hvp = lbfgsFedRec(weight_record, grad_record, weight - last_weight)
-                fin = time.time()
-                print("Tiempo HVP GITHUB: ", medio - inicio)
-                print("Tiempo HVP: ", fin - medio)
-                # Imprimir media e norma e time de hvp e hvpAux
-                with open(path + '/hvp.csv', 'a') as f:
-                    f.write(str(torch.mean(hvp).item()) + ',' + str(torch.norm(hvp).item()) + ',' + str(medio - inicio) + '\n')
-                with open(path + '/hvpAux.csv', 'a') as f:
-                    f.write(str(torch.mean(hvpGitHub).item()) + ',' + str(torch.norm(hvpGitHub).item()) + ',' + str(fin - medio) + '\n')
-
+                hvp = lbfgs_fed_rec(weight_record, grad_record, weight - last_weight)
             else:
                 hvp = None
 
@@ -347,15 +299,7 @@ def flDetector(args, total_clients, entrenamento, original_clients):
             # DETECCION DE CLIENTES MALICIOSOS
             if len(malicious_score) > 10:
                 mal_scores = np.sum(malicious_score[-10:], axis=0)
-                # SIN SILUETA
-                if args.silhouette == 0.0:
-                    det = detection_Siluetas.detectarMaliciososOriginal(mal_scores, args, para_string, e, total_clients,
-                                                                        undetected_byz_index, path, graf=True)
-                # CON SILUETA
-                else:
-                    det = detection_Siluetas.detectarMaliciososOriginal2(mal_scores, args, para_string, e,
-                                                                         total_clients,
-                                                                         undetected_byz_index, path, graf=True)
+                det = detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path)
                 if det is not None:
                     precision_final(precision_path, train_acc_list, test_data_loader, net, device, e, malicious_score,
                                     path)
@@ -407,36 +351,3 @@ def flDetector(args, total_clients, entrenamento, original_clients):
                     writer.writerows(malicious_score)
 
     return None
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    original_clients = [i for i in range(args.nworkers)]
-    n_entrenos = 0
-
-    if args.tipo_exec == 'detect':
-        # TIPO DE EXECUCIÓN: DETECTAR (unha vez eliminado o cluster malicioso, detén o adestramento)
-        detected_byz = flDetector(args, original_clients, n_entrenos, original_clients)
-        print("Clientes detectados como byzantinos: ", detected_byz)
-        if detected_byz is None:
-            real_clients = original_clients
-        else:
-            real_clients = [i for i in original_clients if i not in detected_byz]
-        print("Clientes benignos: ", real_clients)
-
-    elif args.tipo_exec == 'loop':
-        real_clients = original_clients
-        # TIPO DE EXECUCIÓN: BUCLE (continúa o adestramento eliminando os clientes maliciosos)
-        detected_byz = flDetector(args, original_clients, n_entrenos, original_clients)
-
-        while detected_byz is not None:
-            n_entrenos += 1
-            real_clients = [i for i in real_clients if i not in detected_byz]
-            print("----------------------------------")
-            print("Iniciase novo entreno cos seguintes parámetros: ")
-            print("Clientes detectados como byzantinos: ", detected_byz)
-            print("Clientes benignos: ", real_clients)
-            detected_byz = flDetector(args, real_clients, n_entrenos, original_clients)
-
-    else:
-        raise NotImplementedError
