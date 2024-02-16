@@ -26,13 +26,8 @@ def parse_args():
     parser.add_argument("--home_path", help="home path", default='', type=str)
     parser.add_argument("--tipo_exec", help="tipo de execución", default='detect', type=str,
                         choices=['detect', 'loop'])
-    parser.add_argument("--tipo_detect", help="tipo de detección", default=1, type=int,
-                        choices=[1, 2, 3])
     parser.add_argument("--silhouette", help="medida de confianza necesaria (silhouette)", default=0.75,
                         type=float)
-    # add timestamp
-    parser.add_argument("--timestamp", help="timestamp", default=datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
-                        type=str)
     return parser.parse_args()
 
 

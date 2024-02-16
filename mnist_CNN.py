@@ -3,18 +3,19 @@ import torch.nn as nn
 import torch.nn.init as init
 import torchvision
 from torchvision import transforms
-
+import datetime
 
 import np_aggregation
 import clases_redes as cr
 
-
 from lbfgs import *
-from byzantine_range import *
+from byzantine import *
 from detection import *
 from evaluate import *
 
 
+######################################################################
+# SELECCIÓNS DE ATAQUES E AGREGACIÓNS
 def select_byzantine_range(t):
     # decide attack type
     if t == 'partial_trim':
@@ -57,6 +58,8 @@ def select_aggregation(t, old_gradients, param_list, net, lr, b, hvp=None):
         raise NotImplementedError
 
 
+######################################################################
+# DISTRIBUCIÓN DE DATOS
 def repartir_datos(args, train_data_loader, num_workers, device):
     # ASIGNACIÓN ALEATORIA DOS DATOS ENTRE OS CLIENTES
     # Semilla
@@ -106,17 +109,27 @@ def repartir_datos(args, train_data_loader, num_workers, device):
     return each_worker_data, each_worker_label
 
 
-def precision_final(precision_path, train_acc_list, test_data_loader, net, device, e, malicious_score, file_path):
-    # Precisión entreno
+######################################################################
+# MOSTRAR PRECISIÓNS + GARDAR DATOS
+def gardar_precision(precision_path, train_acc_list):
     with (open(precision_path, 'a')) as f:
         np.savetxt(f, train_acc_list, fmt='%.4f')
 
-    # Malicious score
+
+def resumo_final(test_data_loader, net, device, e, malicious_score, path):
     test_accuracy = evaluate_accuracy(test_data_loader, net, device)
     print("Epoch %02d. Test_acc %0.4f" % (e, test_accuracy))
-    with open(file_path + '/mal_scores.csv', 'w', newline='') as csvFile:
+    with open(path + '/score1.csv', 'w', newline='') as csvFile:
         writer = csv.writer(csvFile)
         writer.writerows(malicious_score)
+
+
+def datos_finais(precision_path, train_acc_list, test_data_loader, net, device, e, malicious_score, file_path):
+    # Precisión entreno
+    gardar_precision(precision_path, train_acc_list)
+    # PRECISION FINAL + Malicious score
+    resumo_final(test_data_loader, net, device, e, malicious_score, file_path)
+
 
 
 def fl_detector(args, total_clients, entrenamento, original_clients):
@@ -139,7 +152,8 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
         args.lr) + ", batch_size: " + str(args.batch_size) + ", nworkers: " + str(
         args.nworkers) + ", nbyz: " + str(args.nbyz)
 
-    path = os.path.join('PROBAS', args.timestamp, args.home_path, args.byz_type, args.aggregation, str(entrenamento))
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    path = os.path.join('PROBAS', timestamp, args.home_path, args.byz_type, args.aggregation, str(entrenamento))
     if not os.path.exists(path):
         os.makedirs(path)
     precision_path = path + '/Precision.txt'
@@ -301,8 +315,8 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 mal_scores = np.sum(malicious_score[-10:], axis=0)
                 det = detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path)
                 if det is not None:
-                    precision_final(precision_path, train_acc_list, test_data_loader, net, device, e, malicious_score,
-                                    path)
+                    datos_finais(precision_path, train_acc_list, test_data_loader, net, device, e, malicious_score,
+                                 path)
                     return det
 
             # ACTUALIZAR O PESO E O GRADIENTE
@@ -339,15 +353,10 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
 
             # GARDAR A PRECISIÓN DO ENTRENO CADA 50 ITERACIÓNS
             if (e + 1) % 50 == 0:
-                with (open(precision_path, 'a')) as f:
-                    np.savetxt(f, train_acc_list, fmt='%.4f')
+                gardar_precision(precision_path, train_acc_list)
 
             # CALCUAR A PRECISIÓN FINAL DO TESTEO
             if (e + 1) == args.nepochs:
-                test_accuracy = evaluate_accuracy(test_data_loader, net, device)
-                print("Epoch %02d. Test_acc %0.4f" % (e, test_accuracy))
-                with open(path + '/score1.csv', 'w', newline='') as csvFile:
-                    writer = csv.writer(csvFile)
-                    writer.writerows(malicious_score)
+                resumo_final(test_data_loader, net, device, e, malicious_score, path)
 
     return None
