@@ -35,6 +35,15 @@ if __name__ == "__main__":
     original_clients = [i for i in range(args.nworkers)]
     n_entrenos = 0
 
+    # IMPRIMIR INFORMACIÓN SOBRE EXECUCIÓN
+    print("Parámetros de execución:")
+    print("Número de épocas: ", args.nepochs)
+    print("Tipo de ataque: ", args.byz_type)
+    print("Regra de agregación: ", args.aggregation)
+    print("Home path: ", args.home_path)
+    print("Tipo de execución: ", args.tipo_exec)
+    print("Medida de confianza necesaria (silhouette): ", args.silhouette)
+
     if args.tipo_exec == 'detect':
         # TIPO DE EXECUCIÓN: DETECTAR (unha vez eliminado o cluster malicioso, detén o adestramento)
         detected_byz = fl_detector(args, original_clients, n_entrenos, original_clients)
