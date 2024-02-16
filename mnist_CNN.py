@@ -1,3 +1,4 @@
+import argparse
 import csv
 import torch.nn as nn
 import torch.nn.init as init
@@ -13,6 +14,33 @@ from byzantine import *
 from detection import *
 from evaluate import *
 
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", help="dataset", default='mnist', type=str)
+    parser.add_argument("--bias", help="degree of non-IID to assign data to workers", type=float, default=0.1)
+    # parser.add_argument("--net", help="net", default='mlr', type=str, choices=['mlr', 'cnn', 'fcnn'])
+    parser.add_argument("--batch_size", help="batch size", default=32, type=int)
+    parser.add_argument("--lr", help="learning rate", default=0.0002, type=float)
+    parser.add_argument("--nworkers", help="# workers", default=100, type=int)
+    parser.add_argument("--nepochs", help="# epochs", default=500, type=int)
+    parser.add_argument("--gpu", help="index of gpu", default=0, type=int)
+    parser.add_argument("--seed", help="seed", default=41, type=int)
+    parser.add_argument("--nbyz", help="# byzantines", default=28, type=int)
+    parser.add_argument("--byz_type", help="type of attack", default='no', type=str,
+                        choices=['no', 'partial_trim', 'full_trim', 'mean_attack', 'full_mean_attack', 'gaussian',
+                                 'dir_partial_krum_lambda', 'dir_full_krum_lambda', 'label_flip', 'backdoor', 'dba',
+                                 'edge'])
+    parser.add_argument("--aggregation", help="aggregation rule", default='simple_mean', type=str,
+                        choices=['simple_mean', 'trim', 'krum', 'median'])
+
+    # Engadidas por Roi
+    parser.add_argument("--home_path", help="home path", default='', type=str)
+    parser.add_argument("--tipo_exec", help="tipo de execución", default='detect', type=str,
+                        choices=['detect', 'loop'])
+    parser.add_argument("--silhouette", help="medida de confianza necesaria (silhouette)", default=0.75,
+                        type=float)
+    return parser.parse_args()
 
 ######################################################################
 # SELECCIÓNS DE ATAQUES E AGREGACIÓNS
