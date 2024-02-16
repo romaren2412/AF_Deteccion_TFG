@@ -25,6 +25,28 @@ def lbfgs(s_k_list, y_k_list, v):
     return approx_prod
 
 
+def lbfgsFedRec(delta_w, delta_g, v):
+    # Concatenar S_k_list e Y_k_list_tensor
+    curr_W_k = torch.cat(delta_w, dim=1)
+    curr_G_k = torch.cat(delta_g, dim=1)
+
+    A = torch.matmul(curr_W_k.T, curr_G_k)
+    D = torch.diag_embed(torch.diag(A))
+    L = torch.tril(A, diagonal=-1)
+    sigma = torch.matmul(delta_g[-1].T, delta_w[-1]) / torch.matmul(delta_w[-1].T, delta_w[-1])
+
+    upper_mat = torch.cat([-D, L.T], dim=1)
+    lower_mat = torch.cat([L, torch.matmul((sigma * curr_W_k.t()), curr_W_k)], dim=1)
+    mat = torch.cat([upper_mat, lower_mat], dim=0)
+    mat1 = torch.inverse(mat)
+    mat2 = torch.cat([torch.matmul(curr_G_k.T, v), torch.matmul(sigma * curr_W_k.T, v)], dim=0)
+    p = torch.matmul(mat1, mat2)
+
+    Hv = sigma * v - torch.matmul(torch.cat([curr_G_k, sigma * curr_W_k], dim=1), p)
+
+    return Hv
+
+
 """
 def lbfgs2(w_k_list, g_k_list, v):
     # Concatenar S_k_list e Y_k_list_tensor

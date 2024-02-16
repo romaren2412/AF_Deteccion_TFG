@@ -6,6 +6,7 @@ import torch.nn.init as init
 import detection_Siluetas
 import np_aggregation
 import datetime
+import time
 
 import clases_redes as cr
 import torchvision
@@ -173,7 +174,7 @@ def flDetector(args, total_clients, entrenamento, original_clients):
         args.lr) + ", batch_size: " + str(args.batch_size) + ", nworkers: " + str(
         args.nworkers) + ", nbyz: " + str(args.nbyz)
 
-    path = os.path.join(args.timestamp, args.home_path, args.byz_type, args.aggregation, str(entrenamento))
+    path = os.path.join('PROBAS', args.timestamp, args.home_path, args.byz_type, args.aggregation, str(entrenamento))
     if not os.path.exists(path):
         os.makedirs(path)
     precision_path = path + '/Precision.txt'
@@ -314,7 +315,19 @@ def flDetector(args, total_clients, entrenamento, original_clients):
 
             # CALCULAR HESSIAN VECTOR PRODUCT CON LBFGS (A PARTIR DA EPOCA 50)
             if e > 50:
-                hvp = lbfgs(weight_record, grad_record, weight - last_weight)
+                inicio = time.time()
+                hvpGitHub = lbfgs(weight_record, grad_record, weight - last_weight)
+                medio = time.time()
+                hvp = lbfgsFedRec(weight_record, grad_record, weight - last_weight)
+                fin = time.time()
+                print("Tiempo HVP GITHUB: ", medio - inicio)
+                print("Tiempo HVP: ", fin - medio)
+                # Imprimir media e norma e time de hvp e hvpAux
+                with open(path + '/hvp.csv', 'a') as f:
+                    f.write(str(torch.mean(hvp).item()) + ',' + str(torch.norm(hvp).item()) + ',' + str(medio - inicio) + '\n')
+                with open(path + '/hvpAux.csv', 'a') as f:
+                    f.write(str(torch.mean(hvpGitHub).item()) + ',' + str(torch.norm(hvpGitHub).item()) + ',' + str(fin - medio) + '\n')
+
             else:
                 hvp = None
 
