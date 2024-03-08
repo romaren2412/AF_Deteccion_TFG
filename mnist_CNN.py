@@ -42,6 +42,7 @@ def parse_args():
                         type=float)
     return parser.parse_args()
 
+
 ######################################################################
 # SELECCIÓNS DE ATAQUES E AGREGACIÓNS
 def select_byzantine_range(t):
@@ -157,7 +158,6 @@ def datos_finais(precision_path, train_acc_list, test_data_loader, net, device, 
     gardar_precision(precision_path, train_acc_list)
     # PRECISION FINAL + Malicious score
     resumo_final(test_data_loader, net, device, e, malicious_score, file_path)
-
 
 
 def fl_detector(args, total_clients, entrenamento, original_clients):
@@ -327,7 +327,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 hvp = None
 
             # ATACAR
-            if e % 100 >= 50:
+            if e > 0:
                 param_list = byz(param_list, undetected_byz_index)
 
             # SELECCIONAR MÉTODO DE AGREGACIÓN
