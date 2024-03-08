@@ -38,5 +38,9 @@ if __name__ == "__main__":
             print("Clientes benignos: ", real_clients)
             detected_byz = fl_detector(args, real_clients, n_entrenos, original_clients)
 
+    elif args.tipo_exec == 'no_detect':
+        # TIPO DE EXECUCIÓN: DETECTAR (unha vez eliminado o cluster malicioso, detén o adestramento)
+        detected_byz = fl_detector(args, original_clients, n_entrenos, original_clients)
+
     else:
         raise NotImplementedError

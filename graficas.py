@@ -45,12 +45,37 @@ def grafica_cluster(mal_scores, undetected_byz_index):
     plt.show()
 
 
+def debuxar_precisions(datos, attack_type):
+    # Asignar nombres a las columnas
+    datos.columns = ["Iteracion", "Media_ACC_Benigno", "Media_ACC_Byzantino", "ACC_Global"]
+
+    # Crear la gráfica
+    plt.figure(figsize=(10, 6))
+    plt.plot(datos['Iteracion'], datos['Media_ACC_Benigno'], marker='o', label='Media ACC Benigno')
+    plt.plot(datos['Iteracion'], datos['Media_ACC_Byzantino'], marker='s', label='Media ACC Byzantino')
+    plt.plot(datos['Iteracion'], datos['ACC_Global'], marker='^', label='ACC Global')
+
+    # Configurar la gráfica
+    plt.title('Precisión ao longo do adestramento - {}'.format(attack_type))
+    plt.xlabel('Iteraciones')
+    plt.ylabel('Precisión')
+    plt.legend()
+    plt.grid(True)
+
+    # Mostrar la gráfica
+    plt.show()
+
+
 if __name__ == "__main__":
-    path = 'PROBAS/20240308-172129/mean_attack/simple_mean/0'
+    path = 'PROBAS/20240308-190908/backdoor/simple_mean/0'
+    attack_type = path.split('/')[-3]
     # leer desde la ruta
     data = pd.read_csv(path + '/score1.csv', header=None)
     data = data.T.values.tolist()
-    undetected = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34,
-                  35, 36, 37]
-    #debuxar_medias(data, 'Simple mean', undetected)
+    undetected = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    debuxar_medias(data, attack_type, undetected)
     grafica_cluster(data, undetected)
+
+    data2 = pd.read_csv(path + '/acc.csv', header=0)
+
+    debuxar_precisions(data2, attack_type)

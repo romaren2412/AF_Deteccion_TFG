@@ -38,7 +38,7 @@ def parse_args():
     # Engadidas por Roi
     parser.add_argument("--home_path", help="home path", default='', type=str)
     parser.add_argument("--tipo_exec", help="tipo de execución", default='detect', type=str,
-                        choices=['detect', 'loop'])
+                        choices=['detect', 'loop', 'no_detect'])
     parser.add_argument("--silhouette", help="medida de confianza necesaria (silhouette)", default=0.75,
                         type=float)
     return parser.parse_args()
@@ -146,6 +146,13 @@ def gardar_precision(precision_path, train_acc_list):
         np.savetxt(f, train_acc_list, fmt='%.4f')
 
 
+def gardar_precisions(precision_path, precision_array):
+    with open(precision_path + '/acc.csv', 'w', newline='') as csvFile:
+        csvwriter = csv.writer(csvFile)
+        csvwriter.writerow(["Iteracions", "Mean_ACC_Benigno", "Mean_ACC_Byzantino", "ACC_Global"])
+        csvwriter.writerows(precision_array)
+
+
 def resumo_final(test_data_loader, net, device, e, malicious_score, path):
     test_accuracy = evaluate_accuracy(test_data_loader, net, device)
     print("Epoch %02d. Test_acc %0.4f" % (e, test_accuracy))
@@ -237,7 +244,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
 
         # set upt parameters
         num_workers = len(total_clients)
-        byz_workers = [i for i in range(10, args.nbyz + 10)]
+        byz_workers = [i for i in range(args.nbyz)]
         # byz_workers = [i for i in range(100) if i % 4 == 0]
         # byz_workers = [i for i in range(args.nbyz)]
         undetected_byz = np.intersect1d(byz_workers, total_clients)
@@ -277,6 +284,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
         weight_record = []
         grad_record = []
         train_acc_list = []
+        precision_array = []
 
         ###################################################################################################
 
@@ -342,16 +350,40 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, net_global, lr,
                                                 undetected_byz_index, hvp)
 
+            # TESTEAR PRECISIÓN DE 6 CLIENTES, CADA 25 ITERACIÓNS
+            if (e + 1) % 25 == 0:
+                print("---\nPROBAS DE PRECISIÓN\n---")
+                # Testear 3 modelos bizantinos e 3 benignos aleatorios
+                random_ben = np.random.choice(ben_workers, 3, replace=False)
+                random_byz = np.random.choice(undetected_byz, 3, replace=False)
+                acc_benigno_sum = 0
+                acc_byzantino_sum = 0
+                for b in random_ben:
+                    acc_benigno = evaluate_accuracy(test_data_loader, nets[b], device)
+                    print(f"[ACC Benigno #{b}] " + str(acc_benigno))
+                    acc_benigno_sum += acc_benigno
+                for b in random_byz:
+                    acc_byzantino = evaluate_accuracy(test_data_loader, nets[b], device)
+                    print(f"[ACC Byzantino #{b}] " + str(acc_byzantino))
+                    acc_byzantino_sum += acc_byzantino
+                acc_global = evaluate_accuracy(test_data_loader, net_global, device)
+                print(f"[Net Global]" + str(acc_global))
+
+                # Gardar as precisións
+                precision_array.append([e, acc_benigno_sum / 3, acc_byzantino_sum / 3, acc_global])
+                gardar_precisions(path, precision_array)
+
             # ACTUALIZAR A DISTANCIA MALICIOSA
             if distance is not None and e > 50:
                 malicious_score.append(distance)
 
             # DETECCION DE CLIENTES MALICIOSOS
-            if len(malicious_score) > 10:
+            if len(malicious_score) > 10 and args.tipo_exec != 'no_detect':
                 mal_scores = np.sum(malicious_score[-10:], axis=0)
                 det = detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path)
                 if det is not None:
-                    datos_finais(precision_path, train_acc_list, test_data_loader, net_global, device, e, malicious_score,
+                    datos_finais(precision_path, train_acc_list, test_data_loader, net_global, device, e,
+                                 malicious_score,
                                  path)
                     return det
 
@@ -374,11 +406,12 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
 
             #############################################################################
             # PRECISIÓNS
-            # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
+            # CADA 10 ITERACIÓNS, PRECISIÓN DO MODELO GLOBAL + ATAQUE
             if (e + 1) % 10 == 0:
                 train_accuracy = evaluate_accuracy(test_data_loader, net_global, device)
                 if args.byz_type == ('backdoor' or 'dba'):
-                    backdoor_sr = evaluate_backdoor(test_data_loader, net_global, target=target_backdoor_dba, device=device)
+                    backdoor_sr = evaluate_backdoor(test_data_loader, net_global, target=target_backdoor_dba,
+                                                    device=device)
                     print("Epoch %02d. Train_acc %0.4f Attack_sr %0.4f" % (e, train_accuracy, backdoor_sr))
                 elif args.byz_type == 'edge':
                     backdoor_sr = evaluate_edge_backdoor(test_edge_images, net_global, device)
@@ -391,7 +424,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             if (e + 1) % 50 == 0:
                 gardar_precision(precision_path, train_acc_list)
 
-            # CALCUAR A PRECISIÓN FINAL DO TESTEO
+            # RESUMO FINAL
             if (e + 1) == args.nepochs:
                 resumo_final(test_data_loader, net_global, device, e, malicious_score, path)
 
