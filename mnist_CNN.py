@@ -5,6 +5,7 @@ import torch.nn.init as init
 import torchvision
 from torchvision import transforms
 import datetime
+import copy
 
 import np_aggregation
 import clases_redes as cr
@@ -194,7 +195,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
         num_outputs = 10
 
         # ARQUITECTURA DO MODELO - CNN
-        net = cr.CNN(num_channels=1, num_outputs=num_outputs)
+        net_global = cr.CNN(num_channels=1, num_outputs=num_outputs)
 
         # INICIALIZAR PESOS
         def init_weights(m):
@@ -202,10 +203,10 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 init.xavier_uniform_(m.weight.data, gain=2.24)
                 init.constant_(m.bias.data, 0.0)
 
-        net.apply(init_weights)
+        net_global.apply(init_weights)
 
         # Mueve el modelo a la GPU o CPU según el contexto
-        net.to(device)
+        net_global.to(device)
 
         ########################################################################################################
         # CARGA DO DATASET
@@ -302,21 +303,28 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
         # ##################################################################################################################
         # set malicious scores
         malicious_score = []
+        nets = [copy.deepcopy(net_global) for _ in range(num_workers)]
+        for n in nets:
+            n.optimizer = torch.optim.SGD(n.parameters(), lr=lr)
 
         # CADA ÉPOCA
         for e in range(epochs):
             # CADA CLIENTE
-            for i in range(num_workers):
+            for i, n in enumerate(nets):
+                # Actualizar modelo ao global
+                n.load_state_dict(net_global.state_dict())
                 inputs, labels = each_worker_data[i][:], each_worker_label[i][:]
-                outputs = net(inputs)
+                n.optimizer.zero_grad()
+                outputs = n(inputs)
                 loss = softmax_cross_entropy(outputs, labels)
                 loss.backward()
-                grad_list.append([param.grad.clone() for param in net.parameters()])
+                grad_list.append([param.grad.clone() for param in n.parameters()])
+                n.optimizer.step()
 
             # param_list: Lista de tensores cos gradientes aplanados dos parámetros de cada cliente
             param_list = [torch.cat([xx.view(-1, 1) for xx in x], dim=0) for x in grad_list]
             # tmp: Copia temporal dos parámetros do modelo actual
-            tmp = [param.data.clone() for param in net.parameters()]
+            tmp = [param.data.clone() for param in net_global.parameters()]
             # weight: Lista de tensores cos parámetros aplanados do modelo actual
             weight = torch.cat([x.view(-1, 1) for x in tmp], dim=0)
 
@@ -331,7 +339,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 param_list = byz(param_list, undetected_byz_index)
 
             # SELECCIONAR MÉTODO DE AGREGACIÓN
-            grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, net, lr,
+            grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, net_global, lr,
                                                 undetected_byz_index, hvp)
 
             # ACTUALIZAR A DISTANCIA MALICIOSA
@@ -343,7 +351,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 mal_scores = np.sum(malicious_score[-10:], axis=0)
                 det = detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path)
                 if det is not None:
-                    datos_finais(precision_path, train_acc_list, test_data_loader, net, device, e, malicious_score,
+                    datos_finais(precision_path, train_acc_list, test_data_loader, net_global, device, e, malicious_score,
                                  path)
                     return det
 
@@ -368,12 +376,12 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             # PRECISIÓNS
             # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
             if (e + 1) % 10 == 0:
-                train_accuracy = evaluate_accuracy(test_data_loader, net, device)
+                train_accuracy = evaluate_accuracy(test_data_loader, net_global, device)
                 if args.byz_type == ('backdoor' or 'dba'):
-                    backdoor_sr = evaluate_backdoor(test_data_loader, net, target=target_backdoor_dba, device=device)
+                    backdoor_sr = evaluate_backdoor(test_data_loader, net_global, target=target_backdoor_dba, device=device)
                     print("Epoch %02d. Train_acc %0.4f Attack_sr %0.4f" % (e, train_accuracy, backdoor_sr))
                 elif args.byz_type == 'edge':
-                    backdoor_sr = evaluate_edge_backdoor(test_edge_images, net, device)
+                    backdoor_sr = evaluate_edge_backdoor(test_edge_images, net_global, device)
                     print("Epoch %02d. Train_acc %0.4f Attack_sr %0.4f" % (e, train_accuracy, backdoor_sr))
                 else:
                     print("Epoch %02d. Train_acc %0.4f" % (e, train_accuracy))
@@ -385,6 +393,6 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
 
             # CALCUAR A PRECISIÓN FINAL DO TESTEO
             if (e + 1) == args.nepochs:
-                resumo_final(test_data_loader, net, device, e, malicious_score, path)
+                resumo_final(test_data_loader, net_global, device, e, malicious_score, path)
 
     return None
