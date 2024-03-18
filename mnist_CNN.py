@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("--bias", help="degree of non-IID to assign data to workers", type=float, default=0.1)
     # parser.add_argument("--net", help="net", default='mlr', type=str, choices=['mlr', 'cnn', 'fcnn'])
     parser.add_argument("--batch_size", help="batch size", default=32, type=int)
-    parser.add_argument("--lr", help="learning rate", default=0.0002, type=float)
+    parser.add_argument("--lr", help="learning rate", default=0.001, type=float)
     parser.add_argument("--nworkers", help="# workers", default=100, type=int)
     parser.add_argument("--nepochs", help="# epochs", default=500, type=int)
     parser.add_argument("--gpu", help="index of gpu", default=0, type=int)
@@ -147,7 +147,7 @@ def gardar_precision(precision_path, train_acc_list):
 
 
 def gardar_precisions(precision_path, precision_array):
-    with open(precision_path + '/acc.csv', 'w', newline='') as csvFile:
+    with open(precision_path + '/acc.csv', 'w+', newline='') as csvFile:
         csvwriter = csv.writer(csvFile)
         csvwriter.writerow(["Iteracions", "Mean_ACC_Benigno", "Mean_ACC_Byzantino", "ACC_Global"])
         csvwriter.writerows(precision_array)
@@ -161,11 +161,30 @@ def resumo_final(test_data_loader, net, device, e, malicious_score, path):
         writer.writerows(malicious_score)
 
 
-def datos_finais(precision_path, train_acc_list, test_data_loader, net, device, e, malicious_score, file_path):
+def datos_finais(precision_path, train_acc_list, precision_array, test_data_loader, net, device, e, malicious_score,
+                 file_path):
     # Precisión entreno
     gardar_precision(precision_path, train_acc_list)
+    # Precisión final
+    acc_path = precision_path.split('/')[0]
+    gardar_precisions(acc_path, precision_array)
     # PRECISION FINAL + Malicious score
     resumo_final(test_data_loader, net, device, e, malicious_score, file_path)
+
+
+def average_models(models):
+    # Inicializar un diccionario para almacenar los pesos promediados
+    averaged_state_dict = {}
+
+    # Calcular el promedio simple de los pesos
+    for name in models[0].state_dict():
+        averaged_state_dict[name] = sum(model.state_dict()[name] for model in models) / len(models)
+
+    # Crear un modelo promediado y cargar los pesos promediados
+    averaged_model = models[0].__class__(num_channels=1, num_outputs=10)
+    averaged_model.load_state_dict(averaged_state_dict)
+
+    return averaged_model
 
 
 def fl_detector(args, total_clients, entrenamento, original_clients):
@@ -349,9 +368,10 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             # SELECCIONAR MÉTODO DE AGREGACIÓN
             grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, net_global, lr,
                                                 undetected_byz_index, hvp)
+            net_global = average_models(nets)
 
             # TESTEAR PRECISIÓN DE 6 CLIENTES, CADA 25 ITERACIÓNS
-            if (e + 1) % 25 == 0:
+            if (e + 1) % 50 == 0:
                 print("---\nPROBAS DE PRECISIÓN\n---")
                 # Testear 3 modelos bizantinos e 3 benignos aleatorios
                 random_ben = np.random.choice(ben_workers, 3, replace=False)
@@ -382,9 +402,8 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 mal_scores = np.sum(malicious_score[-10:], axis=0)
                 det = detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path)
                 if det is not None:
-                    datos_finais(precision_path, train_acc_list, test_data_loader, net_global, device, e,
-                                 malicious_score,
-                                 path)
+                    datos_finais(precision_path, train_acc_list, precision_array, test_data_loader, net_global, device,
+                                 e, malicious_score, path)
                     return det
 
             # ACTUALIZAR O PESO E O GRADIENTE

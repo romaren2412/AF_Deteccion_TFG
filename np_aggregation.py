@@ -49,13 +49,14 @@ def simple_mean(old_gradients, param_list, net, lr, b, hvp=None):
 
     # CÁLCULO DA MEDIA DOS GRADIENTES
     mean_nd = torch.mean(torch.cat(param_list, dim=1), dim=-1, keepdim=True)
-
+    """
     idx = 0
     # Actualización dos parámetros
     for j, param in enumerate(net.parameters()):
         if param.requires_grad:
             param.data = param.data - lr * mean_nd[idx:(idx + param.data.numel())].reshape(param.data.shape)
             idx = idx + param.data.numel()
+    """
 
     return mean_nd, distancia
 
