@@ -2,6 +2,51 @@ import numpy as np
 import torch
 
 
+###########################################################################################
+
+def select_byzantine_range(t):
+    # decide attack type
+    if t == 'partial_trim':
+        # partial knowledge trim attack
+        return partial_trim_range
+    elif t == 'full_trim':
+        # full knowledge trim attack
+        return full_trim_range
+    elif t == 'no':
+        return no_byz_range
+    elif t == 'gaussian':
+        return gaussian_attack_range
+    elif t == 'mean_attack':
+        return mean_attack_range
+    elif t == 'full_mean_attack':
+        return full_mean_attack_range
+    elif t == 'dir_partial_krum_lambda':
+        return dir_partial_krum_lambda_range
+    elif t == 'dir_full_krum_lambda':
+        return dir_full_krum_lambda_range
+    elif t in ('backdoor', 'dba', 'edge'):
+        return no_byz_range
+    elif t in ('label_flip', 'backdoor_sen_pixel'):
+        return no_byz_range
+    else:
+        raise NotImplementedError
+
+
+def ataque_pre_entreno(byz_type, data, label, undetected_byz_index, target_backdoor_dba, test_edge_images, edge_label):
+    if byz_type == 'label_flip':
+        label = label_flip_range(label, undetected_byz_index)
+    elif byz_type == 'backdoor':
+        data, label = backdoor_range(data, label, undetected_byz_index, target_backdoor_dba)
+    elif byz_type == 'edge':
+        data, label = edge_range(data, label, undetected_byz_index, test_edge_images, edge_label)
+    elif byz_type == 'dba':
+        data, label = dba_range(data, label, undetected_byz_index, target_backdoor_dba)
+    elif byz_type == 'backdoor_sen_pixel':
+        data, label = backdoor_sen_pixel_range(data, label, undetected_byz_index, target_backdoor_dba)
+    return data, label
+
+###########################################################################################
+
 def no_byz_range(v, f):
     return v
 
@@ -18,6 +63,17 @@ def label_flip_range(each_worker_label, undetected_byz_index):
     return each_worker_label
 
 
+def backdoor_sen_pixel_range(each_worker_data, each_worker_label, undetected_byz, target_backdoor_dba):
+    for i in undetected_byz:
+        met = len(each_worker_data[i])
+        each_worker_data = each_worker_data[i][:met].repeat(2, 1)  # {tensor(2X, 1, 28, 28)}
+        each_worker_label[i] = each_worker_label[i][:300].repeat(2)
+        for example_id in range(0, each_worker_data[i].shape[0], 2):
+            each_worker_label[i][example_id] = target_backdoor_dba
+
+    return each_worker_data, each_worker_label
+
+
 def backdoor_range(each_worker_data, each_worker_label, undetected_byz, target_backdoor_dba):
     # Igual que backdoor_range en MLR pero sin redimensionar a (-1,784)
     # 2. BACKDOOR: introducir un patrón específico nas mostras de datos para engañar ao modelo central.
@@ -29,12 +85,13 @@ def backdoor_range(each_worker_data, each_worker_label, undetected_byz, target_b
     :return: each_worker_data e each_worker_label actualizados
     """
     for i in undetected_byz:
+        met = len(each_worker_data[i])
         # Duplica as primeiras 300 mostras de datos de cada traballador byzantino
         # REDIMENSIONAR OS DATOS PARA O BUCLE
-        prim = each_worker_data[i][:300]  # {tensor(300, 784)}
-        sec = prim.view(-1, 1, 28, 28)  # {tensor(300, 1, 28, 28)}
-        each_worker_data[i] = sec.repeat(2, 1, 1, 1)  # {tensor(600, 1, 28, 28)}
-        each_worker_label[i] = each_worker_label[i][:300].repeat(2)
+        prim = each_worker_data[i][:met]  # {tensor(X, 784)}
+        sec = prim.view(-1, 1, 28, 28)  # {tensor(X, 1, 28, 28)}
+        each_worker_data[i] = sec.repeat(2, 1, 1, 1)  # {tensor(2X, 1, 28, 28)}
+        each_worker_label[i] = each_worker_label[i][:met].repeat(2)
 
         # Modifica patróns específicos nas mostras de datos duplicadas (esquina inferior dereita)
         # Segundo este bucle:
