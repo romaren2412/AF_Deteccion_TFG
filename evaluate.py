@@ -29,8 +29,7 @@ def evaluate_accuracy(data_loader, model, device):
     return accuracy
 
 
-def evaluate_backdoor(data_iterator, net, target, device):
-    # Igual que en MLR pero sin redimensionar a (-1, 784)
+def evaluate_backdoor(data_iterator, net, target, device, type):
     """
     Evalúa la precisión del ataque en el conjunto de datos de puerta trasera (backdoor).
     (Compara, entre los ejemplos que inicialmente no eran de la clase destino,
@@ -53,11 +52,12 @@ def evaluate_backdoor(data_iterator, net, target, device):
         for i, (data, label) in enumerate(data_iterator):
             data, label = data.to(device), label.to(device)
 
-            # Aplica la puerta trasera a todas las imágenes para el test
-            data[:, :, 26, 26] = 1
-            data[:, :, 26, 24] = 1
-            data[:, :, 25, 25] = 1
-            data[:, :, 24, 26] = 1
+            if type != 'backdoor_sen_pixel':
+                # Aplica la puerta trasera a todas las imágenes para el test
+                data[:, :, 26, 26] = 1
+                data[:, :, 26, 24] = 1
+                data[:, :, 25, 25] = 1
+                data[:, :, 24, 26] = 1
 
             # Inicializa la lista de índices
             remaining_idx = list(range(data.shape[0]))

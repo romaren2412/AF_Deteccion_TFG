@@ -228,15 +228,8 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             # PRECISIÓNS
             # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
             if (e + 1) % 10 == 0:
-                train_accuracy = testear_precisions(test_data_loader, net, device, e, train_acc_list, path)
-                if args.byz_type == ('backdoor' or 'dba'):
-                    backdoor_sr = evaluate_backdoor(test_data_loader, net, target=target_backdoor_dba, device=device)
-                    print("Epoch %02d. Train_acc %0.4f Attack_sr %0.4f" % (e, train_accuracy, backdoor_sr))
-                elif args.byz_type == 'edge':
-                    backdoor_sr = evaluate_edge_backdoor(test_edge_images, net, device)
-                    print("Epoch %02d. Train_acc %0.4f Attack_sr %0.4f" % (e, train_accuracy, backdoor_sr))
-                else:
-                    print("Epoch %02d. Train_acc %0.4f" % (e, train_accuracy))
+                testear_precisions(test_data_loader, net, device, e, train_acc_list, path, target_backdoor_dba,
+                                   test_edge_images, args.byz_type)
 
     # CALCUAR A PRECISIÓN FINAL DO TESTEO
     resumo_final(test_data_loader, net, device, e, malicious_score, path)

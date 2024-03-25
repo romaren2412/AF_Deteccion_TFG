@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-FLDET_START = 50
+from config import parse_args
+
+args = parse_args()
+FLDET_START = args.det_start
 
 
 def debuxar_medias(data, undetected_byz_index):
@@ -88,11 +91,12 @@ def grafica_maliciosas_epoca(mal_scores, undetected_byz_index, epoch=-1):
 
 def debuxar_precision(datos):
     # Asignar nombres a las columnas
-    datos.columns = ["Iteracion", "ACC_Global"]
+    datos.columns = ["Iteracion", "ACC_Global", "ASR"]
 
     # Crear la gráfica
     plt.figure(figsize=(10, 6))
     plt.plot(datos['Iteracion'], datos['ACC_Global'], marker='^', label='ACC Global')
+    plt.plot(datos['Iteracion'], datos['ASR'], marker='o', color='red', label='Éxito do ataque', linestyle='dashed')
 
     # Configurar la gráfica
     plt.title('Evolución da precisión - {}'.format(attack_type))
@@ -119,9 +123,9 @@ def leer_undetected(archivo):
 
 if __name__ == "__main__":
     gardar = True
-    detectar = False
+    detectar = True
 
-    path = 'PROBAS/ND/20240324-213911/median/backdoor/0'
+    path = 'PROBAS/D/backdoor/0'
     save_path = os.path.dirname(path)
     attack_type = path.split('/')[-2]
     # leer desde la ruta

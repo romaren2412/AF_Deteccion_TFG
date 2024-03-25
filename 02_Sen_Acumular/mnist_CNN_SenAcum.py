@@ -242,7 +242,8 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 mal_scores = np.sum(malicious_score[-10:], axis=0)
                 det = detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path)
                 if det is not None:
-                    datos_finais(path, train_acc_list, test_data_loader, net_not_acum, device, e, malicious_score)
+                    datos_finais(path, train_acc_list, test_data_loader, net_not_acum, device, e, malicious_score,
+                                 args.byz_type)
                     return det
 
             # ACTUALIZAR O PESO E O GRADIENTE
@@ -266,15 +267,8 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             # PRECISIÓNS
             # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
             if (e + 1) % 10 == 0:
-                train_accuracy = testear_precisions(test_data_loader, net_not_acum, device, e, train_acc_list, path)
-                if args.byz_type == ('backdoor' or 'dba'):
-                    backdoor_sr = evaluate_backdoor(test_data_loader, net_not_acum, target=target_backdoor_dba, device=device)
-                    print("Epoch %02d. Train_acc %0.4f Attack_sr %0.4f" % (e, train_accuracy, backdoor_sr))
-                elif args.byz_type == 'edge':
-                    backdoor_sr = evaluate_edge_backdoor(test_edge_images, net_not_acum, device)
-                    print("Epoch %02d. Train_acc %0.4f Attack_sr %0.4f" % (e, train_accuracy, backdoor_sr))
-                else:
-                    print("Epoch %02d. Train_acc %0.4f" % (e, train_accuracy))
+                testear_precisions(test_data_loader, net_not_acum, device, e, train_acc_list, path, target_backdoor_dba,
+                                   test_edge_images, args.byz_type)
 
             # GARDAR AS PUNTUACIÓNS DO ENTRENO CADA 10 ITERACIÓNS
             if (e + 1) % 10 == 0 and e > args.det_start:

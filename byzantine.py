@@ -65,9 +65,9 @@ def label_flip_range(each_worker_label, undetected_byz_index):
 
 def backdoor_sen_pixel_range(each_worker_data, each_worker_label, undetected_byz, target_backdoor_dba):
     for i in undetected_byz:
-        met = len(each_worker_data[i])
-        each_worker_data = each_worker_data[i][:met].repeat(2, 1)  # {tensor(2X, 1, 28, 28)}
-        each_worker_label[i] = each_worker_label[i][:300].repeat(2)
+        met = len(each_worker_data[i])//2
+        each_worker_data[i] = each_worker_data[i][:met].repeat(2, 1, 1, 1)  # {tensor(2X, 1, 28, 28)}
+        each_worker_label[i] = each_worker_label[i][:met].repeat(2)
         for example_id in range(0, each_worker_data[i].shape[0], 2):
             each_worker_label[i][example_id] = target_backdoor_dba
 
@@ -85,7 +85,7 @@ def backdoor_range(each_worker_data, each_worker_label, undetected_byz, target_b
     :return: each_worker_data e each_worker_label actualizados
     """
     for i in undetected_byz:
-        met = len(each_worker_data[i])
+        met = len(each_worker_data[i])//2
         # Duplica as primeiras 300 mostras de datos de cada traballador byzantino
         # REDIMENSIONAR OS DATOS PARA O BUCLE
         prim = each_worker_data[i][:met]  # {tensor(X, 784)}
