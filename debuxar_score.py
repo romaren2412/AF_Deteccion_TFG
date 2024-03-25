@@ -119,9 +119,9 @@ def leer_undetected(archivo):
 
 if __name__ == "__main__":
     gardar = True
-    detectar = True
+    detectar = False
 
-    path = 'PROBAS/100 clientes/20240323-193705/simple_mean/backdoor/0'
+    path = 'PROBAS/ND/20240324-213911/median/backdoor/0'
     save_path = os.path.dirname(path)
     attack_type = path.split('/')[-2]
     # leer desde la ruta

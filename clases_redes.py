@@ -1,5 +1,6 @@
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.init as init
+import math
 
 
 class CNN_v1(nn.Module):
@@ -52,3 +53,18 @@ class CNN_v2(nn.Module):
         x = self.fc2(x)
         x = self.softmax(x)
         return x
+
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # Inicialización He para capas convolucionales
+                init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                # Inicialización uniforme para capas lineales
+                init.kaiming_uniform_(m.weight, a=math.sqrt(5))  # a es el factor de la rectificación lineal
+                if m.bias is not None:
+                    fan_in, _ = init._calculate_fan_in_and_fan_out(m.weight)
+                    bound = 1 / math.sqrt(fan_in)
+                    init.uniform_(m.bias, -bound, bound)

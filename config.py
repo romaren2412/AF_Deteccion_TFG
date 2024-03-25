@@ -5,7 +5,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", help="dataset", default='mnist', type=str)
     parser.add_argument("--bias", help="degree of non-IID to assign data to workers", type=float, default=0.1)
-    parser.add_argument("--lr", help="learning rate", default=2e-4, type=float)
+    parser.add_argument("--batch_size", help="batch size", default=600, type=int)
+    parser.add_argument("--lr", help="learning rate", default=1, type=float)
     parser.add_argument("--nworkers", help="# workers", default=100, type=int)
     parser.add_argument("--nepochs", help="# epochs", default=500, type=int)
     parser.add_argument("--gpu", help="index of gpu", default=0, type=int)
@@ -15,13 +16,15 @@ def parse_args():
                         choices=['no', 'partial_trim', 'full_trim', 'mean_attack', 'full_mean_attack', 'gaussian',
                                  'dir_partial_krum_lambda', 'dir_full_krum_lambda', 'label_flip', 'backdoor', 'dba',
                                  'edge', 'backdoor_sen_pixel'])
-    parser.add_argument("--aggregation", help="aggregation rule", default='simple_mean', type=str,
+    parser.add_argument("--aggregation", help="aggregation rule", default='median', type=str,
                         choices=['simple_mean', 'trim', 'krum', 'median'])
 
     # Engadidas por Roi
     parser.add_argument("--home_path", help="home path", default='', type=str)
+
     parser.add_argument("--tipo_exec", help="tipo de execucion", default='detect', type=str,
                         choices=['detect', 'loop', 'no_detect'])
     parser.add_argument("--silhouette", help="medida de confianza necesaria (silhouette)", default=0.0,
                         type=float)
+    parser.add_argument("--det_start", help="Inicio de deteccion", default=50, type=int)
     return parser.parse_args()

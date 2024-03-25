@@ -1,5 +1,5 @@
 from config import parse_args
-from mnist_CNN import fl_detector
+from mnist_CNN_SenAcum import fl_detector
 
 if __name__ == "__main__":
     args = parse_args()
