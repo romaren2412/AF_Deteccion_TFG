@@ -1,8 +1,4 @@
-import pandas as pd
 import torch.nn as nn
-import torch.nn.init as init
-import torchvision
-from torchvision import transforms
 import datetime
 
 import clases_redes as cr
@@ -10,61 +6,9 @@ import clases_redes as cr
 from lbfgs import *
 from byzantine import *
 from detection import *
-from evaluate import *
 from arquivos import *
 from np_aggregation import select_aggregation
-from debuxar_score import grafica_cluster
-
-
-######################################################################
-# DISTRIBUCIÓN DE DATOS
-def repartir_datos(args, train_data_loader, num_workers, device):
-    # ASIGNACIÓN ALEATORIA DOS DATOS ENTRE OS CLIENTES
-    # Semilla
-    seed = args.seed
-    np.random.seed(seed)
-
-    bias_weight = args.bias
-    other_group_size = (1 - bias_weight) / 9.
-    worker_per_group = num_workers / 10
-
-    each_worker_data = [[] for _ in range(num_workers)]
-    each_worker_label = [[] for _ in range(num_workers)]
-
-    for _, (data, label) in enumerate(train_data_loader):
-        data, label = data.to(device), label.to(device)
-        for (x, y) in zip(data, label):
-            x = x.to(device).view(1, 1, 28, 28)
-            y = y.to(device).view(-1)
-
-            # Asignar un punto de datos a un grupo
-            upper_bound = (y.cpu().numpy()) * other_group_size + bias_weight
-            lower_bound = (y.cpu().numpy()) * other_group_size
-            rd = np.random.random_sample()
-
-            if rd > upper_bound:
-                worker_group = int(np.floor((rd - upper_bound) / other_group_size) + y.cpu().numpy() + 1)
-            elif rd < lower_bound:
-                worker_group = int(np.floor(rd / other_group_size))
-            else:
-                worker_group = y.cpu().numpy()
-
-            # Asignar un punto de datos a un trabajador
-            rd = np.random.random_sample()
-            selected_worker = int(worker_group * worker_per_group + int(np.floor(rd * worker_per_group)))
-            each_worker_data[selected_worker].append(x)
-            each_worker_label[selected_worker].append(y)
-
-    # Concatenar los datos para cada trabajador para evitar huecos
-    each_worker_data = [torch.cat(each_worker, dim=0) for each_worker in each_worker_data]
-    each_worker_label = [torch.cat(each_worker, dim=0) for each_worker in each_worker_label]
-
-    # Barajar aleatoriamente los trabajadores
-    random_order = np.random.RandomState(seed=seed).permutation(num_workers)
-    each_worker_data = [each_worker_data[i] for i in random_order]
-    each_worker_label = [each_worker_label[i] for i in random_order]
-
-    return each_worker_data, each_worker_label
+from datos import *
 
 
 def porcentaxes(each_worker_label):
@@ -107,23 +51,15 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
         num_outputs = 10
 
         # ARQUITECTURA DO MODELO - CNN
-        net_not_acum = cr.CNN_v2(num_channels=1, num_outputs=num_outputs)
-        net_not_acum.initialize_weights()
+        net = cr.CNN_v2(num_channels=1, num_outputs=num_outputs)
+        net.initialize_weights()
 
         # Mueve el modelo a la GPU o CPU según el contexto
-        net_not_acum.to(device)
+        net.to(device)
 
         ########################################################################################################
         # CARGA DO DATASET
-        # Definir la transformación para normalizar los datos
-        transform = transforms.Compose([transforms.ToTensor()])
-        # Cargar el conjunto de datos de entrenamiento
-        train_data = torchvision.datasets.MNIST(root='./data', train=True, transform=transform, download=True)
-        train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=60000, shuffle=True,
-                                                        generator=torch.Generator(device='cuda'))
-        # Cargar el conjunto de datos de prueba
-        test_data = torchvision.datasets.MNIST(root='./data', train=False, transform=transform, download=True)
-        test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=500, shuffle=False)
+        train_data_loader, test_data_loader, test_data = preparar_datos()
 
         if args.byz_type == 'edge':
             digit_edge = 7
@@ -207,16 +143,16 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             for i in range(num_workers):
                 inputs, labels = each_worker_data[i][:], each_worker_label[i][:]
                 # NON ACUMULAR GRADIENTES
-                net_not_acum.zero_grad()
-                outputs = net_not_acum(inputs)
+                net.zero_grad()
+                outputs = net(inputs)
                 loss = softmax_cross_entropy(outputs, labels)
                 loss.backward()
-                grad_list.append([param.grad.clone() for param in net_not_acum.parameters()])
+                grad_list.append([param.grad.clone() for param in net.parameters()])
 
             # param_list: Lista de tensores cos gradientes aplanados dos parámetros de cada cliente
             param_list = [torch.cat([xx.view(-1, 1) for xx in x], dim=0) for x in grad_list]
             # tmp: Copia temporal dos parámetros do modelo actual
-            tmp = [param.data.clone() for param in net_not_acum.parameters()]
+            tmp = [param.data.clone() for param in net.parameters()]
             # weight: Lista de tensores cos parámetros aplanados do modelo actual
             weight = torch.cat([x.view(-1, 1) for x in tmp], dim=0)
 
@@ -230,7 +166,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             param_list = byz(param_list, undetected_byz_index)
 
             # SELECCIONAR MÉTODO DE AGREGACIÓN
-            grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, net_not_acum, lr,
+            grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, net, lr,
                                                 undetected_byz_index, hvp)
 
             # ACTUALIZAR A DISTANCIA MALICIOSA
@@ -242,7 +178,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 mal_scores = np.sum(malicious_score[-10:], axis=0)
                 det = detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path)
                 if det is not None:
-                    datos_finais(path, train_acc_list, test_data_loader, net_not_acum, device, e, malicious_score,
+                    datos_finais(path, train_acc_list, test_data_loader, net, device, e, malicious_score,
                                  args.byz_type)
                     return det
 
@@ -263,11 +199,13 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             del grad_list
             grad_list = []
 
+            mix_data_labels(each_worker_data, each_worker_label, undetected_byz_index, ben_workers)
+
             #############################################################################
             # PRECISIÓNS
             # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
             if (e + 1) % 10 == 0:
-                testear_precisions(test_data_loader, net_not_acum, device, e, train_acc_list, path, target_backdoor_dba,
+                testear_precisions(test_data_loader, net, device, e, train_acc_list, path, target_backdoor_dba,
                                    test_edge_images, args.byz_type)
 
             # GARDAR AS PUNTUACIÓNS DO ENTRENO CADA 10 ITERACIÓNS
@@ -275,6 +213,6 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                 gardar_puntuacions(malicious_score, path)
 
     # CALCUAR A PRECISIÓN FINAL DO TESTEO
-    resumo_final(test_data_loader, net_not_acum, device, e, malicious_score, path)
+    resumo_final(test_data_loader, net, device, e, malicious_score, path)
 
     return None
