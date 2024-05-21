@@ -1,6 +1,7 @@
+import math
+
 import torch.nn as nn
 import torch.nn.init as init
-import math
 
 
 class CNN_v1(nn.Module):

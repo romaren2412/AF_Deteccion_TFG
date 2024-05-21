@@ -1,7 +1,8 @@
+import os
+
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
-import os
 
 
 def detection(score, args, para_string, iter, clients, byz_undetected_index, path_file):
@@ -67,7 +68,6 @@ def detection(score, args, para_string, iter, clients, byz_undetected_index, pat
     # Imprimir resultados en fichero de texto
     if not os.path.exists(path_file):
         os.makedirs(path_file)
-
 
     # CONTROL DE SILUETA
     # SILUETA INSUFICIENTE

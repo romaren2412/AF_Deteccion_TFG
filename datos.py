@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-import torch
 import numpy as np
-from torch.utils.data import DataLoader, Subset
+import torch
 import torchvision
-from torchvision import datasets, transforms
-import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
+from torchvision import transforms
 
 
 ######################################################################
@@ -63,7 +62,7 @@ def preparar_datos():
     transform = transforms.Compose([transforms.ToTensor()])
     # Cargar el conjunto de datos de entrenamiento
     train_data = torchvision.datasets.MNIST(root='./data', train=True, transform=transform, download=True)
-    train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=60000, shuffle=True,
+    train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=6000, shuffle=True,
                                                     generator=torch.Generator(device='cuda'))
     # Cargar el conjunto de datos de prueba
     test_data = torchvision.datasets.MNIST(root='./data', train=False, transform=transform, download=True)
@@ -71,31 +70,14 @@ def preparar_datos():
     return train_data_loader, test_data_loader, test_data
 
 
-def porcentaxes(each_worker_label):
-    for i in range(len(each_worker_label)):
-        print("Cliente ", i)
-        for j in range(10):
-            print("Porcentaxe de ", j, ": ", torch.sum(each_worker_label[i] == j).item() / len(each_worker_label[i]))
-        print("Total: ", len(each_worker_label[i]))
-
-
-def mix_data_labels(each_worker_data, each_worker_label, byzantine_indices, benign_indices):
-    # Genera una permutación de los índices para los grupos bizantino y benigno
-    perm_byzantine = np.random.permutation(byzantine_indices)
-    perm_benign = np.random.permutation(benign_indices)
-
-    # Crea copias temporales para evitar sobrescribir datos durante el intercambio
-    temp_data = each_worker_data.copy()
-    temp_label = each_worker_label.copy()
-
-    # Aplica la permutación a los datos y etiquetas de los clientes bizantinos
-    for original, permuted in zip(byzantine_indices, perm_byzantine):
-        each_worker_data[original] = temp_data[permuted]
-        each_worker_label[original] = temp_label[permuted]
-
-    # Aplica la permutación a los datos y etiquetas de los clientes benignos
-    for original, permuted in zip(benign_indices, perm_benign):
-        each_worker_data[original] = temp_data[permuted]
-        each_worker_label[original] = temp_label[permuted]
-
-    return each_worker_data, each_worker_label
+def preparar_datos_con_batch_size():
+    # Definir la transformación para normalizar los datos
+    transform = transforms.Compose([transforms.ToTensor()])
+    # Cargar el conjunto de datos de entrenamiento
+    train_data = torchvision.datasets.MNIST(root='./data', train=True, transform=transform, download=True)
+    train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=600, shuffle=True,
+                                                    generator=torch.Generator(device='cuda'))
+    # Cargar el conjunto de datos de prueba
+    test_data = torchvision.datasets.MNIST(root='./data', train=False, transform=transform, download=True)
+    test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=50, shuffle=False)
+    return train_data_loader, test_data_loader, test_data

@@ -1,22 +1,14 @@
-import torch.nn as nn
 import datetime
 
+import torch.nn as nn
+
 import clases_redes as cr
-
-from lbfgs import *
-from byzantine import *
-from detection import *
 from arquivos import *
-from np_aggregation import select_aggregation
+from byzantine import *
 from datos import *
-
-
-def porcentaxes(each_worker_label):
-    for i in range(len(each_worker_label)):
-        print("Cliente ", i)
-        for j in range(10):
-            print("Porcentaxe de ", j, ": ", torch.sum(each_worker_label[i] == j).item() / len(each_worker_label[i]))
-        print("Total: ", len(each_worker_label[i]))
+from detection import *
+from lbfgs import *
+from np_aggregation import select_aggregation
 
 
 def fl_detector(args, total_clients, entrenamento, original_clients):
@@ -170,7 +162,7 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
                                                 undetected_byz_index, hvp)
 
             # ACTUALIZAR A DISTANCIA MALICIOSA
-            if distance is not None and e > 50:
+            if distance is not None and e >= args.det_start:
                 malicious_score.append(distance)
 
             # DETECCION DE CLIENTES MALICIOSOS
@@ -198,8 +190,6 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             old_grad_list = param_list
             del grad_list
             grad_list = []
-
-            mix_data_labels(each_worker_data, each_worker_label, undetected_byz_index, ben_workers)
 
             #############################################################################
             # PRECISIÓNS
