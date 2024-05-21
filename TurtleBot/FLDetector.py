@@ -1,23 +1,23 @@
 import datetime
 
-import torch.nn as nn
-
-import net_cnn as cr
-from arquivos import *
-from byzantine import *
-from datos import *
-from detection import *
+from clases_redes import TurtlebotNet
 from lbfgs import *
-from np_aggregation import select_aggregation
+from detection import *
+from turtlebot import *
+import copy
+from np_aggregation import *
+from arquivos import *
 
 
-def fl_detector(args, total_clients, entrenamento, original_clients):
+def fl_detector(c, args, total_clients, entrenamento, original_clients, byz_workers):
     """
     Detecta ataques mediante clustering.
+    :param c: obxecto de configuración
     :param args: obxecto cos argumentos de entrada
     :param total_clients: lista cos clientes totais (a partir do segundo adestramento, os supostamente benignos)
     :param entrenamento: número de adestramento (para gardar os resultados no caso de repetir o adestramento desde 0)
     :param original_clients: lista cos clientes orixinais (para gardar os resultados no caso de repetir o adestramento)
+    :param byz_workers: lista cos clientes byzantinos
     :return:
     """
     # Decide el dispositivo de ejecución
@@ -26,12 +26,13 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
     else:
         device = torch.device('cuda', args.gpu)
 
-        # Crear ou abrir ficheiro para gardar os resultados
-    para_string = "bias: " + str(args.bias) + ", nepochs: " + str(args.nepochs) + ", lr: " + str(
-        args.lr) + ", nworkers: " + str(args.nworkers) + ", nbyz: " + str(args.nbyz)
+    # Crear ou abrir ficheiro para gardar os resultados
+    para_string = "nepochs: " + str(c.EPOCH_tb) + ", lr: " + str(
+        c.LR_tb) + ", batch_size: " + str(c.BACH_SIZE_tb) + ", nworkers: " + str(
+        c.SIZE) + ", nbyz: " + str(len(byz_workers))
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    path = os.path.join('PROBAS', args.home_path, timestamp, args.aggregation, args.byz_type, str(entrenamento))
+    path = os.path.join('PROBAS', args.home_path, f"4_{args.tipo_ben}", args.tipo_mal, timestamp)
     if not os.path.exists(path):
         os.makedirs(path)
     ataques_path = path + '/Ataques_Detectados.txt'
@@ -40,37 +41,44 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
 
     # EJECUCIÓN
     with device:
-        num_outputs = 10
-
         # ARQUITECTURA DO MODELO - CNN
-        net = cr.CNN_v2(num_channels=1, num_outputs=num_outputs)
-        net.initialize_weights()
+        global_net = TurtlebotNet()
 
         # Mueve el modelo a la GPU o CPU según el contexto
-        net.to(device)
+        global_net.to(device)
 
         ########################################################################################################
         # CARGA DO DATASET
-        train_data_loader, test_data_loader, test_data = preparar_datos()
+        aprendedores = []
+        for i in range(len(total_clients)):
+            c_ = copy.deepcopy(c)
+            c_.RANK = i
 
-        if args.byz_type == 'edge':
-            digit_edge = 7
-            indices_digit = torch.nonzero(test_data.targets == digit_edge, as_tuple=False)[:, 0]
-            images_digit = test_data.data[indices_digit, :] / 255.0
-            test_edge_images = images_digit.view(-1, 1, 28, 28).to(device)
-            edge_label = torch.ones(len(test_edge_images)).to(torch.int).to(device)
+            print(f"[INFO USER {i}] Loading data...")
+            ap = TurtlebotTraining(c_)
+            # CREAR REDE, TRAIN E TEST
+            ap.net = copy.deepcopy(global_net).float().to(ap.device)
+            ap.create_train_test(i)
+
+            if i == 0:
+                global_test_temp = ap.init_global_test()
+            elif i == len(total_clients) - 1:
+                global_test_temp = ap.create_global_test(global_test_temp)
+            else:
+                ap.continue_global_test(global_test_temp)
+
+            if i in byz_workers:
+                ap.byz = True
+
+            aprendedores.append(ap)
+            testloader_global = global_test_temp
 
         ####################################################################################################
 
-        # DECIDIR EL TIPO DE ATAQUE
-        byz = select_byzantine_range(args.byz_type)
-
         # Definir la pérdida de entropía cruzada softmax
-        softmax_cross_entropy = nn.CrossEntropyLoss()
+        criterion = aprendedores[-1].criterion
 
         # set upt parameters
-        num_workers = len(total_clients)
-        byz_workers = [i for i in range(args.nbyz)]
         undetected_byz = np.intersect1d(byz_workers, total_clients)
         undetected_byz_index = np.where(np.isin(total_clients, undetected_byz))[0]
 
@@ -101,76 +109,53 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             f.write("Byzantinos (non detectados aínda): " + str(undetected_byz.tolist()) + '\n')
             f.write(" --> Porcentaxe de benignos restantes: " + str(percent_ben_orixinal) + '\n')
 
-        lr = args.lr
-        epochs = args.nepochs
+        epochs = c.EPOCH_tb
+        lr = c.LR_tb
         grad_list = []
         old_grad_list = []
         weight_record = []
         grad_record = []
-        train_acc_list = []
-        test_edge_images = None
-        edge_label = None
-
-        ###################################################################################################
-
-        # ASIGNACIÓN ALEATORIA DOS DATOS ENTRE OS CLIENTES
-        each_worker_data, each_worker_label = repartir_datos(args, train_data_loader, num_workers, device)
-
-        ######################################################################################################
-
-        # EXECUTAR ATAQUES
-        target_backdoor_dba = 0
-        each_worker_data, each_worker_label = ataque_pre_entreno(args.byz_type, each_worker_data, each_worker_label,
-                                                                 undetected_byz_index, target_backdoor_dba,
-                                                                 test_edge_images, edge_label)
+        malicious_score = []
+        precision_array = []
 
         # ##################################################################################################################
-        # set malicious scores
-        malicious_score = []
-
+        print("COMEZO DO ADESTRAMENTO...")
         # CADA ÉPOCA
         for e in range(epochs):
+            # print("EPOCH: ", e)
             # CADA CLIENTE
-            for i in range(num_workers):
-                inputs, labels = each_worker_data[i][:], each_worker_label[i][:]
-                # NON ACUMULAR GRADIENTES
-                net.zero_grad()
-                outputs = net(inputs)
-                loss = softmax_cross_entropy(outputs, labels)
-                loss.backward()
-                grad_list.append([param.grad.clone() for param in net.parameters()])
+            for ap in aprendedores:
+                ap.net.load_state_dict(global_net.state_dict())
+                ap.sl.adestrar_tb(ap.criterion, grad_list)
 
             # param_list: Lista de tensores cos gradientes aplanados dos parámetros de cada cliente
             param_list = [torch.cat([xx.view(-1, 1) for xx in x], dim=0) for x in grad_list]
             # tmp: Copia temporal dos parámetros do modelo actual
-            tmp = [param.data.clone() for param in net.parameters()]
+            tmp = [param.data.clone() for param in global_net.parameters()]
             # weight: Lista de tensores cos parámetros aplanados do modelo actual
             weight = torch.cat([x.view(-1, 1) for x in tmp], dim=0)
 
             # CALCULAR HESSIAN VECTOR PRODUCT CON LBFGS (A PARTIR DA EPOCA 50)
-            if e >= args.det_start:
-                hvp = lbfgs_fed_rec(weight_record, grad_record, weight - last_weight)
+            if e >= c.FLDET_START:
+                hvp = lbfgs(weight_record, grad_record, weight - last_weight)
             else:
                 hvp = None
 
-            # ATACAR
-            param_list = byz(param_list, undetected_byz_index)
-
             # SELECCIONAR MÉTODO DE AGREGACIÓN
-            grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, net, lr,
+            grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, global_net, lr,
                                                 undetected_byz_index, hvp)
 
             # ACTUALIZAR A DISTANCIA MALICIOSA
-            if distance is not None and e >= args.det_start:
+            if distance is not None and e > c.FLDET_START:
                 malicious_score.append(distance)
 
             # DETECCION DE CLIENTES MALICIOSOS
             if len(malicious_score) > 10 and args.tipo_exec != 'no_detect':
                 mal_scores = np.sum(malicious_score[-10:], axis=0)
-                det = detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path)
+                det = detectar_maliciosos(mal_scores, para_string, e, total_clients, undetected_byz_index, path)
                 if det is not None:
-                    datos_finais(path, train_acc_list, test_data_loader, net, device, e, malicious_score,
-                                 args.byz_type)
+                    datos_finais(path, precision_array, testloader_global, global_net, device, e, malicious_score,
+                                 criterion)
                     return det
 
             # ACTUALIZAR O PESO E O GRADIENTE
@@ -193,15 +178,12 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
             #############################################################################
             # PRECISIÓNS
             # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
-            if (e + 1) % 10 == 0:
-                testear_precisions(test_data_loader, net, device, e, train_acc_list, path, target_backdoor_dba,
-                                   test_edge_images, args.byz_type)
+            if (e + 1) % 50 == 0:
+                testear_precisions(testloader_global, global_net, device, e, precision_array, path, criterion)
 
             # GARDAR AS PUNTUACIÓNS DO ENTRENO CADA 10 ITERACIÓNS
-            if (e + 1) % 10 == 0 and e > args.det_start:
+            if (e + 1) % 10 == 0 and e > c.FLDET_START:
                 gardar_puntuacions(malicious_score, path)
 
-    # CALCUAR A PRECISIÓN FINAL DO TESTEO
-    resumo_final(test_data_loader, net, device, e, malicious_score, path)
-
+        resumo_final(testloader_global, global_net, device, e, malicious_score, path, criterion)
     return None

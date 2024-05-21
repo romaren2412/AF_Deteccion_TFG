@@ -19,7 +19,7 @@ def evaluate_accuracy(data_loader, model, device):
 
     with torch.no_grad():
         for data, label in data_loader:
-            data, label = data.to(device), label.to(device)
+            data, label = data.to(device).float(), label.to(device).float()
             output = model(data)
             _, predicted = torch.max(output.data, 1)
             total += label.size(0)
@@ -84,6 +84,50 @@ def evaluate_backdoor(data_iterator, net, target, device, type):
             correct_predictions += (predictions == label).sum().item()
             total_samples += len(remaining_idx)
 
+    accuracy = correct_predictions / total_samples
+    return accuracy
+
+
+def evaluate_backdoor_mnistm(data_iterator, net, target, device, attack_type):
+    net.eval()  # Establece el modelo en modo de evaluación
+    correct_predictions = 0
+    total_samples = 0
+
+    with torch.no_grad():  # Desactiva el cálculo del gradiente durante la evaluación
+        for i, (data, label) in enumerate(data_iterator):
+            data, label = data.to(device), label.to(device)
+
+            if attack_type != 'backdoor_sen_pixel':
+                # Aplica la puerta trasera a todas las imágenes para el test
+                data[:, :, 15, 15] = 1
+                data[:, :, 15, 13] = 1
+                data[:, :, 14, 14] = 1
+                data[:, :, 13, 15] = 1
+
+            # Inicializa la lista de índices
+            remaining_idx = list(range(data.shape[0]))
+
+            # Se evalúa la precisión del ataque en los ejemplos que inicialmente NO eran de la clase destino.
+            # "Elimina" los ejemplos que SÍ son de la clase de destino
+            # Establece las etiquetas de los ejemplos que NO son de la clase de destino a la clase de destino
+            # (objetivo del ataque)
+            for example_id in range(data.shape[0]):
+                if label[example_id] == target:
+                    remaining_idx.remove(example_id)
+                else:
+                    label[example_id] = target
+
+            # Propagación hacia adelante
+            output = net(data)
+
+            # Obtén las predicciones
+            _, predictions = torch.max(output, 1)
+            predictions = predictions[remaining_idx]
+            label = label[remaining_idx]
+
+            # Actualiza el conteo de predicciones correctas
+            correct_predictions += (predictions == label).sum().item()
+            total_samples += len(remaining_idx)
     accuracy = correct_predictions / total_samples
     return accuracy
 

@@ -26,7 +26,7 @@ def lbfgs_github(s_k_list, y_k_list, v):
     return approx_prod
 
 
-def lbfgs_fed_rec(delta_w, delta_g, v):
+def lbfgs(delta_w, delta_g, v):
     # Concatenar S_k_list e Y_k_list_tensor
     curr_w_k = torch.cat(delta_w, dim=1)
     curr_g_k = torch.cat(delta_g, dim=1)

@@ -5,24 +5,24 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
 
-def detection(score, args, para_string, iter, clients, byz_undetected_index, path_file):
+def detection(score, para_string, epoch, clients, byz_undetected_index, path_file):
     """
     Detecta ataques mediante clustering.
     :param score: vector da suma das últimas 10 puntuacións maliciosas
-    :param args: argumentos de entrada
     :param para_string: string para crear ficheiro de texto
-    :param iter: iteración na que se detecta o ataque
+    :param epoch: epoca na que se detecta o ataque
     :param clients: lista de clientes
     :param byz_undetected_index: índices dos clientes byzantinos non detectados
+    :param path_file: ruta do ficheiro de texto
     """
 
     nbyz = len(byz_undetected_index)
     clients_temp = [i for i in range(len(clients))]
 
     # Normalizar puntuacións (paper: apply linear transformation on st)
-    min = np.min(score)
-    max = np.max(score)
-    score = (score - min) / (max - min)
+    minim = np.min(score)
+    maxim = np.max(score)
+    score = (score - minim) / (maxim - minim)
 
     # Estimar el número de clusters (2: benigno y malicioso)
     estimator = KMeans(n_clusters=2, n_init=10)
@@ -71,6 +71,7 @@ def detection(score, args, para_string, iter, clients, byz_undetected_index, pat
 
     # CONTROL DE SILUETA
     # SILUETA INSUFICIENTE
+    """
     if silhouette < args.silhouette:
         print('Ataque identificado pero con pouca seguridade (silhouette)')
         with open(path_file + '/Ataques_Detectados.txt', 'a+') as f:
@@ -80,13 +81,14 @@ def detection(score, args, para_string, iter, clients, byz_undetected_index, pat
             f.write("detected_clients: " + str(detected_clients) + "\n")
             f.write("silhouette: " + str(silhouette) + "\n")
         return []
+    """
 
     # SILUETA SUFICIENTE
     print('Ataque confirmado!')
     # Imprimir resultados en fichero de texto
     with open(path_file + '/Ataques_Detectados.txt', 'a+') as f:
         f.write("\n------\n" + para_string + "\n")
-        f.write("Stop at iteration: " + str(iter) + "\n")
+        f.write("Stop at iteration: " + str(epoch) + "\n")
         f.write("acc %0.4f; recall %0.4f; fpr %0.4f; fnr %0.4f;\n" % (acc, recall, fpr, fnr))
         f.write("detected_clients: " + str(detected_clients) + "\n")
         f.write("silhouette: " + str(silhouette) + "\n")
@@ -94,7 +96,7 @@ def detection(score, args, para_string, iter, clients, byz_undetected_index, pat
     return detected_clients
 
 
-def detection1(score, b=10, k=8):
+def detection1(score, b=10, k=4):
     # IGUAL QUE O ORIXINAL DE GITHUB, ESTABLÉCENSE VARIABLES b E k POR SE QUEREN MODIFICARSE
     """
     Detecta ataques mediante la Gap Statistics.
@@ -106,13 +108,13 @@ def detection1(score, b=10, k=8):
     select_k = 1
     ks = range(1, k)  # número de clusters posibles
     gaps = np.zeros(len(ks))  # vector de gaps
-    gapDiff = np.zeros(len(ks) - 1)  # vector de diferencias de gaps
+    gap_diff = np.zeros(len(ks) - 1)  # vector de diferencias de gaps
     sdk = np.zeros(len(ks))  # vector de desviacións estándar de los gaps
 
     # Normalizar puntuacións (paper: apply linear transformation on st)
-    min = np.min(score)
-    max = np.max(score)
-    score = (score - min) / (max - min)
+    minim = np.min(score)
+    maxim = np.max(score)
+    score = (score - minim) / (maxim - minim)
 
     # Bucle para diferentes números de clusters Obxectivo: Se os clústeres con datos reais son mellores que os
     # aleatorios, asúmese que hai unha estrutura. La Gap Statistics (gaps[i]) se calcula como la diferencia entre el
@@ -120,35 +122,35 @@ def detection1(score, b=10, k=8):
     # espera que la Gap Statistics sea alta cuando el número de clústeres (k) sea apropiado para describir la
     # estructura en los datos reales.
     for i, k in enumerate(ks):
-        # Aplica KMeans para cada número de clusters e calcula Wk
+        # Aplica KMeans para cada número de clusters e calcula wk
         estimator = KMeans(n_clusters=k, n_init=10)
         estimator.fit(score.reshape(-1, 1))
         label_pred = estimator.labels_
         center = estimator.cluster_centers_
-        Wk = np.sum([np.square(score[m] - center[label_pred[m]]) for m in range(len(score))])
+        wk = np.sum([np.square(score[m] - center[label_pred[m]]) for m in range(len(score))])
 
-        WkRef = np.zeros(b)  # Inicializacion de WkRef
+        wk_ref = np.zeros(b)  # Inicializacion de wk_ref
         for j in range(b):
-            # Aplica KMeans a datos aleatorios y calcula WkRef
+            # Aplica KMeans a datos aleatorios y calcula wk_ref
             rand = np.random.uniform(0, 1, len(score))
             estimator = KMeans(n_clusters=k, n_init=10)
             estimator.fit(rand.reshape(-1, 1))
             label_pred = estimator.labels_
             center = estimator.cluster_centers_
-            WkRef[j] = np.sum([np.square(rand[m] - center[label_pred[m]]) for m in range(len(rand))])
+            wk_ref[j] = np.sum([np.square(rand[m] - center[label_pred[m]]) for m in range(len(rand))])
 
         # Calcula la GapStatistics y la desviación estándar
-        gaps[i] = np.log(np.mean(WkRef)) - np.log(Wk)
-        sdk[i] = np.sqrt((1.0 + b) / b) * np.std(np.log(WkRef))
+        gaps[i] = np.log(np.mean(wk_ref)) - np.log(wk)
+        sdk[i] = np.sqrt((1.0 + b) / b) * np.std(np.log(wk_ref))
 
         # GapDiff: Diferencia entre o gap anterior e o actual xunto coa desviación estándar
         if i > 0:
-            gapDiff[i - 1] = gaps[i - 1] - gaps[i] + sdk[i]
+            gap_diff[i - 1] = gaps[i - 1] - gaps[i] + sdk[i]
 
     # Busca o número de clusters óptimo (o primeiro punto onde a diferenza entre as métricas é non negativa)
     # Se non hai ataque, será o primeiro (a gapdiff será positiva)
-    for i in range(len(gapDiff)):
-        if gapDiff[i] >= 0:
+    for i in range(len(gap_diff)):
+        if gap_diff[i] >= 0:
             select_k = i + 1
             break
 
@@ -161,11 +163,11 @@ def detection1(score, b=10, k=8):
         return 1
 
 
-def detectarMaliciosos(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path_file):
+def detectar_maliciosos(mal_scores, para_string, e, total_clients, undetected_byz_index, path_file):
     # Detección orixinal, usando 'detection1'
     if detection1(mal_scores):
         print('Stop at iteration:', e)
-        det = detection(mal_scores, args, para_string, e, total_clients, undetected_byz_index, path_file)
+        det = detection(mal_scores, para_string, e, total_clients, undetected_byz_index, path_file)
         # Métrica de detección (silhouette)
         if len(det) > 0:
             return det
