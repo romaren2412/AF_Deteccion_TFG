@@ -3,7 +3,6 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="dataset", default='mnist', type=str)
     parser.add_argument("--bias", help="degree of non-IID to assign data to workers", type=float, default=0.1)
     parser.add_argument("--batch_size", help="batch size", default=600, type=int)
     parser.add_argument("--lr", help="learning rate", default=1, type=float)

@@ -90,13 +90,19 @@ def grafica_maliciosas_epoca(mal_scores, undetected_byz_index, epoch=-1):
 
 
 def debuxar_precision(datos):
-    # Asignar nombres a las columnas
-    datos.columns = ["Iteracion", "ACC_Global", "ASR"]
+    asr = False
+    if len(datos.columns) == 3:
+        asr = True
+        datos.columns = ["Iteracion", "ACC_Global", "ASR"]
+    else:
+        datos.columns = ["Iteracion", "ACC_Global"]
 
     # Crear la gráfica
     plt.figure(figsize=(10, 6))
     plt.plot(datos['Iteracion'], datos['ACC_Global'], marker='^', label='ACC Global')
-    plt.plot(datos['Iteracion'], datos['ASR'], marker='o', color='red', label='Éxito do ataque', linestyle='dashed')
+    if asr:
+        plt.plot(datos['Iteracion'], datos['ASR'], marker='o', color='red', label='Éxito do ataque',
+                 linestyle='dashed')
 
     # Configurar la gráfica
     plt.title('Evolución da precisión - {}'.format(attack_type))
@@ -125,7 +131,7 @@ if __name__ == "__main__":
     gardar = True
     detectar = True
 
-    path = 'PROBAS/D/backdoor/0'
+    path = 'PROBAS/20240521-133745/median/label_flip/0'
     save_path = os.path.dirname(path)
     attack_type = path.split('/')[-2]
     # leer desde la ruta

@@ -2,7 +2,7 @@ import datetime
 
 import torch.nn as nn
 
-import clases_redes as cr
+import net_cnn as cr
 from arquivos import *
 from byzantine import *
 from datos import *
@@ -115,7 +115,6 @@ def fl_detector(args, total_clients, entrenamento, original_clients):
 
         # ASIGNACIÓN ALEATORIA DOS DATOS ENTRE OS CLIENTES
         each_worker_data, each_worker_label = repartir_datos(args, train_data_loader, num_workers, device)
-        # porcentaxes(each_worker_label)
 
         ######################################################################################################
 
