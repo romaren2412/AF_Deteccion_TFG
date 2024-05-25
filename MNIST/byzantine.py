@@ -2,8 +2,6 @@ import numpy as np
 import torch
 
 
-###########################################################################################
-
 def select_byzantine_range(t):
     # decide attack type
     if t == 'partial_trim':
@@ -31,143 +29,89 @@ def select_byzantine_range(t):
     else:
         raise NotImplementedError
 
-
-def ataque_pre_entreno(byz_type, data, label, undetected_byz_index, target_backdoor_dba, test_edge_images, edge_label):
-    if byz_type == 'label_flip':
-        label = label_flip_range(label, undetected_byz_index)
-    elif byz_type == 'backdoor':
-        data, label = backdoor_range(data, label, undetected_byz_index, target_backdoor_dba)
-    elif byz_type == 'edge':
-        data, label = edge_range(data, label, undetected_byz_index, test_edge_images, edge_label)
-    elif byz_type == 'dba':
-        data, label = dba_range(data, label, undetected_byz_index, target_backdoor_dba)
-    elif byz_type == 'backdoor_sen_pixel':
-        data, label = backdoor_sen_pixel_range(data, label, undetected_byz_index, target_backdoor_dba)
-    return data, label
+#######################################################################################################################
+# TARGETED #
 
 
-###########################################################################################
-
-def no_byz_range(v, f):
-    return v
-
-
-def label_flip_range(each_worker_label, undetected_byz_index):
-    # 1. LABEL FLIP: cambiar as etiquetas asinadas ás mostras de datos dos traballadores byzantinos.
-    """
-    :param each_worker_label: lista coas etiquetas obxectivo de cada traballador
-    :param undetected_byz_index: lista de clientes byzantinos (índices respecto aos n clientes que haxa nese momento)
-    :return: each_worker_label actualizado
-    """
-    for i in undetected_byz_index:
-        each_worker_label[i] = (each_worker_label[i] + 1) % 9
-    return each_worker_label
-
-
-def backdoor_sen_pixel_range(each_worker_data, each_worker_label, undetected_byz, target_backdoor_dba):
-    for i in undetected_byz:
-        met = len(each_worker_data[i]) // 2
-        each_worker_data[i] = each_worker_data[i][:met].repeat(2, 1, 1, 1)  # {tensor(2X, 1, 28, 28)}
-        each_worker_label[i] = each_worker_label[i][:met].repeat(2)
-        for example_id in range(0, each_worker_data[i].shape[0], 2):
-            each_worker_label[i][example_id] = target_backdoor_dba
-
-    return each_worker_data, each_worker_label
-
-
-def backdoor_range(each_worker_data, each_worker_label, undetected_byz, target_backdoor_dba):
+def backdoor(data, target_backdoor_dba):
     # Igual que backdoor_range en MLR pero sin redimensionar a (-1,784)
     # 2. BACKDOOR: introducir un patrón específico nas mostras de datos para engañar ao modelo central.
     """
-    :param each_worker_data:
-    :param each_worker_label:
-    :param undetected_byz: lista de clientes byzantinos
+    :param data: conxunto de input, label
     :param target_backdoor_dba: ETIQUETA DO PATRÓN
     :return: each_worker_data e each_worker_label actualizados
     """
-    for i in undetected_byz:
-        met = len(each_worker_data[i]) // 2
-        # Duplica as primeiras 300 mostras de datos de cada traballador byzantino
-        # REDIMENSIONAR OS DATOS PARA O BUCLE
-        prim = each_worker_data[i][:met]  # {tensor(X, 784)}
-        sec = prim.view(-1, 1, 28, 28)  # {tensor(X, 1, 28, 28)}
-        each_worker_data[i] = sec.repeat(2, 1, 1, 1)  # {tensor(2X, 1, 28, 28)}
-        each_worker_label[i] = each_worker_label[i][:met].repeat(2)
+    # Duplica a primeira metade de mostras de datos de cada traballador byzantino
+    inputs, labels = data
+    # REDIMENSIONAR OS DATOS PARA O BUCLE
+    met = len(inputs) // 2
+    prim = inputs[:met]  # {tensor(X, 3, 16, 16)}
+    inputs = prim.repeat(2, 1, 1, 1)  # {tensor(2X, 3, 16, 16)}
+    labels = labels[:met].repeat(2)
+    inputs = np.transpose(inputs, (0, 2, 3, 1))
 
-        # Modifica patróns específicos nas mostras de datos duplicadas (esquina inferior dereita)
-        # Segundo este bucle:
-        #   each_worker_data[i] tería que ser tensor(600, 1, 28, 28)
-        #   each_worker_label[i] tería que ser tensor(600)
-        for example_id in range(0, each_worker_data[i].shape[0], 2):
-            each_worker_data[i][example_id][0][26][26] = 1
-            each_worker_data[i][example_id][0][24][26] = 1
-            each_worker_data[i][example_id][0][26][24] = 1
-            each_worker_data[i][example_id][0][25][25] = 1
-            # Etiqueta 0 para o patrón
-            each_worker_label[i][example_id] = target_backdoor_dba
+    # Modificar patrones específicos en las muestras de datos duplicadas (esquina inferior derecha)
+    for example_id in range(0, inputs.shape[0], 2):
+        inputs[example_id][26][26] = 1
+        inputs[example_id][24][26] = 1
+        inputs[example_id][26][24] = 1
+        inputs[example_id][25][25] = 1
+        # Etiqueta 0 para el patrón
+        labels[example_id] = target_backdoor_dba
 
-    return each_worker_data, each_worker_label
+    inputs = np.transpose(inputs, (0, 3, 1, 2))
+    return inputs, labels
 
 
-def edge_range(each_worker_data, each_worker_label, undetected_byz, test_edge_images, label):
-    """
-    # 3. EDGE: introduce mostras específicas do número 7 (label 1) nas mostras de datos dos traballadores byzantinos.
-    :param each_worker_data:
-    :param each_worker_label:
-    :param undetected_byz: lista de clientes byzantinos
-    :param test_edge_images:
-    :param label:
-    :return: each_worker_data e each_worker_label actualizados
-    """
-    for i in undetected_byz:
-        each_worker_data[i] = torch.cat((each_worker_data[i][:150], test_edge_images[:450]), dim=0)
-        each_worker_label[i] = torch.cat((each_worker_label[i][:150], label[:450]), dim=0)
-
-    return each_worker_data, each_worker_label
+def backdoor_sen_pixel(data, target):
+    inputs, labels = data
+    met = len(inputs) // 2
+    inputs = inputs[:met].repeat(2, 1, 1, 1)
+    labels = labels[:met].repeat(2)
+    for example_id in range(0, inputs.shape[0], 2):
+        labels[example_id] = target
+    return inputs, labels
 
 
-def dba_range(each_worker_data, each_worker_label, undetected_byz, target_backdoor_dba):
-    # IGUAL QUE DBA_RANGE en MLR PERO SIN REDIMENSIONAR A (-1,784)
+def dba(data, target, index):
+    # DUPLICAR OS DATOS ORIXINAIS
+    inputs, labels = data
+    met = len(inputs) // 2
+    inputs = inputs[:met].repeat(2, 1, 1, 1)
+    inputs = np.transpose(inputs, (0, 2, 3, 1))
+    labels = labels[:met].repeat(2)
+    pixeles = {0: (26, 26), 1: (24, 16), 2: (26, 24), 3: (25, 25)}
+    if index in pixeles:
+        for example_id in range(0, inputs.shape[0], 2):
+            inputs[example_id][pixeles[index][0]][pixeles[index][1]] = 1
+            labels[example_id] = target
 
-    subarrays = np.array_split(undetected_byz, 4)
-    for index, subarray in enumerate(subarrays):
-        # Grupo 1: Establece o patrón 1 na posición (26, 26)
-        if index == 0:
-            for i in subarray:
-                each_worker_data[i] = each_worker_data[i][:300].view(-1, 1, 28, 28).repeat(2, 1, 1, 1)
-                each_worker_label[i] = each_worker_label[i][:300].repeat(2)
-                for example_id in range(0, each_worker_data[i].shape[0], 2):
-                    each_worker_data[i][example_id][0][26][26] = 1.
-                    each_worker_label[i][example_id] = target_backdoor_dba
+    inputs = np.transpose(inputs, (0, 3, 1, 2))
+    return inputs, labels
 
-        # Grupo 2: Establece o patrón 1 na posición (24, 26)
-        elif index == 1:
-            for i in subarray:
-                each_worker_data[i] = each_worker_data[i][:300].view(-1, 1, 28, 28).repeat(2, 1, 1, 1)
-                each_worker_label[i] = each_worker_label[i][:300].repeat(2)
-                for example_id in range(0, each_worker_data[i].shape[0], 2):
-                    each_worker_data[i][example_id][0][24][26] = 1.
-                    each_worker_label[i][example_id] = target_backdoor_dba
 
-        # Grupo 3: Establece o patrón 1 na posición (26, 24)
-        elif index == 2:
-            for i in subarray:
-                each_worker_data[i] = each_worker_data[i][:300].view(-1, 1, 28, 28).repeat(2, 1, 1, 1)
-                each_worker_label[i] = each_worker_label[i][:300].repeat(2)
-                for example_id in range(0, each_worker_data[i].shape[0], 2):
-                    each_worker_data[i][example_id][0][26][24] = 1.
-                    each_worker_label[i][example_id] = target_backdoor_dba
+def edge(data, target):
+    inputs, labels = data
+    indices_digit = np.where(labels == target)[0]
+    images_digit = inputs[indices_digit]
+    qrt = len(images_digit) // 3
+    inputs = np.concatenate((inputs[:qrt], images_digit[:]), axis=0)
+    labels = np.concatenate((labels[:qrt], labels[indices_digit[:]]), axis=0)
+    return inputs, labels
 
-        # Grupo 4: Establece o patrón 1 na posición (25, 25)
-        else:
-            for i in subarray:
-                each_worker_data[i] = each_worker_data[i][:300].view(-1, 1, 28, 28).repeat(2, 1, 1, 1)
-                each_worker_label[i] = each_worker_label[i][:300].repeat(2)
-                for example_id in range(0, each_worker_data[i].shape[0], 2):
-                    each_worker_data[i][example_id][0][25][25] = 1.
-                    each_worker_label[i][example_id] = target_backdoor_dba
 
-    return each_worker_data, each_worker_label
+def label_flip(data):
+    inputs, labels = data
+    labels = (labels + 1) % 9
+    return inputs, labels
+
+
+#######################################################################################################################
+# UNTARGETED #
+
+
+def no_byz_range(v, f):
+    return v
 
 
 def partial_trim_range(v, undetected_byz):
@@ -253,6 +197,12 @@ def mean_attack_range(v, undetected_byz):
     return v
 
 
+def mean_attack_v2(model):
+    for param in model.parameters():
+        param.data = -param.data
+    return model
+
+
 def full_mean_attack_range(v, undetected_byz_index):
     """
     :param v: vector de gradientes
@@ -284,6 +234,34 @@ def full_mean_attack_range(v, undetected_byz_index):
     for i in undetected_byz_index:
         v[i] = new_val
     return v
+
+
+def full_mean_attack_v2(model, undetected_byz_index, grad_list):
+    """
+    :param model: modelo
+    :param undetected_byz_index: lista de dispositivos byzantinos
+    :param grad_list: lista de gradientes
+    :return:
+    """
+    # Se todos os dispositivos restantes están comprometidos, invértese o signo dos gradientes do modelo
+    if len(undetected_byz_index) == len(grad_list):
+        for param in model.parameters():
+            param.grad.data = -param.grad.data
+        return model
+
+    # Se hai parte dos dispositivos comprometidos, invértese o signo dos gradientes dos mesmos
+    vi_shape = grad_list[0].shape
+    todos_grads = torch.cat(grad_list, dim=1)
+    grad_sum = torch.sum(todos_grads, dim=1)
+
+    # Para obter o array de clientes benignos (e calcular a suma do gradiente)
+    benign_clients = np.setdiff1d(np.arange(todos_grads.size(1)), undetected_byz_index)
+    benign_grad_sum = torch.sum(todos_grads[:, benign_clients], dim=1)
+
+    # Invírtese a un tipo de media no que ten máis importancia o gradiente dos dispositivos benignos
+    new_val = ((-grad_sum + benign_grad_sum) / len(undetected_byz_index)).reshape(vi_shape)
+    model.parameters.grad = new_val
+    return model
 
 
 """

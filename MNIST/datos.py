@@ -2,59 +2,58 @@
 import numpy as np
 import torch
 import torchvision
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
 
 
 ######################################################################
 # DISTRIBUCIÓN DE DATOS
-def repartir_datos(args, train_data_loader, num_workers, device):
+def repartir_datos(c, train_data, num_workers):
     # ASIGNACIÓN ALEATORIA DOS DATOS ENTRE OS CLIENTES
     # Semilla
-    seed = args.seed
+    seed = c.seed
     np.random.seed(seed)
 
-    bias_weight = args.bias
+    bias_weight = c.bias
     other_group_size = (1 - bias_weight) / 9.
     worker_per_group = num_workers / 10
 
     each_worker_data = [[] for _ in range(num_workers)]
     each_worker_label = [[] for _ in range(num_workers)]
 
-    for _, (data, label) in enumerate(train_data_loader):
-        data, label = data.to(device), label.to(device)
-        for (x, y) in zip(data, label):
-            x = x.to(device).view(1, 1, 28, 28)
-            y = y.to(device).view(-1)
+    # Iterar sobre el dataset completo
+    for i in range(len(train_data)):
+        data, label = train_data[i]
+        data = data.view(1, 1, 28, 28)
+        label = torch.tensor([label])
 
-            # Asignar un punto de datos a un grupo
-            upper_bound = (y.cpu().numpy()) * other_group_size + bias_weight
-            lower_bound = (y.cpu().numpy()) * other_group_size
-            rd = np.random.random_sample()
+        # Asignar un punto de datos a un grupo
+        upper_bound = label.item() * other_group_size + bias_weight
+        lower_bound = label.item() * other_group_size
+        rd = np.random.random_sample()
 
-            if rd > upper_bound:
-                worker_group = int(np.floor((rd - upper_bound) / other_group_size) + y.cpu().numpy() + 1)
-            elif rd < lower_bound:
-                worker_group = int(np.floor(rd / other_group_size))
-            else:
-                worker_group = y.cpu().numpy()
+        if rd > upper_bound:
+            worker_group = int(np.floor((rd - upper_bound) / other_group_size) + label.item() + 1)
+        elif rd < lower_bound:
+            worker_group = int(np.floor(rd / other_group_size))
+        else:
+            worker_group = label.item()
 
-            # Asignar un punto de datos a un trabajador
-            rd = np.random.random_sample()
-            selected_worker = int(worker_group * worker_per_group + int(np.floor(rd * worker_per_group)))
-            each_worker_data[selected_worker].append(x)
-            each_worker_label[selected_worker].append(y)
+        # Asignar un punto de datos a un trabajador
+        rd = np.random.random_sample()
+        selected_worker = int(worker_group * worker_per_group + int(np.floor(rd * worker_per_group)))
+        each_worker_data[selected_worker].append(data)
+        each_worker_label[selected_worker].append(label)
 
-    # Concatenar los datos para cada trabajador para evitar huecos
-    each_worker_data = [torch.cat(each_worker, dim=0) for each_worker in each_worker_data]
-    each_worker_label = [torch.cat(each_worker, dim=0) for each_worker in each_worker_label]
+    # Crear data loaders para cada trabajador
+    client_data_loaders = []
+    for data, labels in zip(each_worker_data, each_worker_label):
+        dataset = torch.utils.data.TensorDataset(torch.cat(data, dim=0), torch.cat(labels, dim=0))
+        data_loader = DataLoader(dataset, batch_size=c.BATCH_SIZE, shuffle=True,
+                                 generator=torch.Generator(device='cuda'))
+        client_data_loaders.append(data_loader)
 
-    # Barajar aleatoriamente los trabajadores
-    random_order = np.random.RandomState(seed=seed).permutation(num_workers)
-    each_worker_data = [each_worker_data[i] for i in random_order]
-    each_worker_label = [each_worker_label[i] for i in random_order]
-
-    return each_worker_data, each_worker_label
+    return client_data_loaders
 
 
 def preparar_datos():
@@ -62,9 +61,19 @@ def preparar_datos():
     transform = transforms.Compose([transforms.ToTensor()])
     # Cargar el conjunto de datos de entrenamiento
     train_data = torchvision.datasets.MNIST(root='MNIST/data', train=True, transform=transform, download=True)
-    train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=60000, shuffle=True,
-                                                    generator=torch.Generator(device='cuda'))
     # Cargar el conjunto de datos de prueba
     test_data = torchvision.datasets.MNIST(root='MNIST/data', train=False, transform=transform, download=True)
-    test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=500, shuffle=False)
-    return train_data_loader, test_data_loader, test_data
+    return train_data, test_data
+
+
+def crear_dataset_auxiliar(num_samples=10, img_size=(28, 28), num_classes=10):
+    # Generar datos aleatorios de imagen
+    images = torch.rand(num_samples, 1, img_size[0], img_size[1])
+
+    # Generar etiquetas aleatorias
+    labels = torch.randint(low=0, high=num_classes, size=(num_samples,))
+
+    # Crear un TensorDataset
+    dataset = TensorDataset(images, labels)
+
+    return dataset

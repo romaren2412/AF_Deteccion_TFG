@@ -1,13 +1,11 @@
-import math
 import torch
 import torch.nn as nn
-import torch.nn.init as init
 import torch.nn.functional as f
 
 
-class MnistNet(nn.Module):
+class MnistNetFLARE(nn.Module):
     def __init__(self, num_channels, num_outputs):
-        super(MnistNet, self).__init__()
+        super(MnistNetFLARE, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=num_channels, out_channels=30, kernel_size=3)
         self.relu1 = nn.ReLU()
         self.maxpool1 = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -15,14 +13,12 @@ class MnistNet(nn.Module):
         self.relu2 = nn.ReLU()
         self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.flatten = nn.Flatten()
-        # Calculate the size of the output from the last max pooling layer
-        # After first conv and pool: (28 - 3) + 1 = 26, then 26 / 2 = 13 (because of max pooling)
-        # After second conv and pool: (13 - 3) + 1 = 11, then 11 / 2 = 5.5 which is rounded down to 5
-        # The output size is 5x5x5
-        self.fc1 = nn.Linear(5 * 5 * 5, 100)  # Adjust the input features
+        # La salida de la segunda capa de max pooling sigue siendo 5x5x5
+        self.fc1 = nn.Linear(5 * 5 * 5, 100)  # Primera capa completamente conectada
         self.relu3 = nn.ReLU()
-        self.fc2 = nn.Linear(100, num_outputs)
-        self.softmax = nn.Softmax(dim=1)  # Apply softmax to the output
+        self.fc2 = nn.Linear(100, num_outputs)  # Capa antes de la salida final
+
+        self.initialize_weights()
 
     def forward(self, x):
         x = self.maxpool1(self.relu1(self.conv1(x)))
@@ -30,23 +26,25 @@ class MnistNet(nn.Module):
         x = self.flatten(x)
         x = self.relu3(self.fc1(x))
         x = self.fc2(x)
-        x = self.softmax(x)
-        return x
+        return f.softmax(x, dim=1)  # Usamos softmax para la salida final
+
+    def extraer_plr(self, x):
+        x = self.maxpool1(self.relu1(self.conv1(x)))
+        x = self.maxpool2(self.relu2(self.conv2(x)))
+        x = self.flatten(x)
+        x = self.relu3(self.fc1(x))
+        plr = self.fc2(x)
+        return plr
 
     def initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                # Inicialización He para capas convolucionales
-                init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                # Inicialización uniforme para capas lineales
-                init.kaiming_uniform_(m.weight, a=math.sqrt(5))  # a es el factor de la rectificación lineal
-                if m.bias is not None:
-                    fan_in, _ = init._calculate_fan_in_and_fan_out(m.weight)
-                    bound = 1 / math.sqrt(fan_in)
-                    init.uniform_(m.bias, -bound, bound)
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+            elif isinstance(module, nn.Linear):
+                nn.init.kaiming_normal_(module.weight, nonlinearity='relu')
+                nn.init.constant_(module.bias, 0)
 
 
 class DigitFiveNet(nn.Module):
@@ -81,6 +79,7 @@ class DigitFiveNet(nn.Module):
         x = f.relu(self.fc1(x))
         x = f.relu(self.fc2(x))
         x = f.relu(self.fc3(x))
+        plr = self.fc4(x)
         x = self.softmax(self.fc4(x))
         return x
 
