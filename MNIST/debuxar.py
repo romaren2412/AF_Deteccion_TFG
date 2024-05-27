@@ -60,7 +60,7 @@ def plot_evolucion_medias(ruta):
     """ Gráfica B: Muestra la evolución de las medias de los bizantinos y benignos a lo largo de las épocas """
     mean_benign, mean_byzantine = calcular_medias_por_epoca(ruta)
 
-    if all(x == 0 for x in mean_byzantine):
+    if attack_type == 'no':
         plt.plot(mean_benign, label='Media de Benignos', color='green', marker='o')
     else:
         plt.plot(mean_benign, label='Media de Benignos', color='green', marker='o')
@@ -94,7 +94,7 @@ def debuxar_diferencias_precision(ruta):
         plt.plot(data['Iteracions'], data['ASR_Flare'], label='ASR_Flare', linestyle='dotted', color='blue')
 
     # Añadiendo título y etiquetas
-    plt.title('FedAvg VS Flare - {}'.format(ataque))
+    plt.title('FedAvg VS FLTrust - {}'.format(ataque))
     plt.xlabel('Iteracions')
     plt.ylabel('Precision')
     plt.legend()
@@ -137,11 +137,11 @@ def debuxar_precision(ruta):
 if __name__ == "__main__":
     gardar = True
 
-    path = 'MNIST/PROBAS/SGD/mean_attack'
+    path = 'PROBAS/FLTrust/partial_trim'
     save_path = path
     attack_type = path.split('/')[-1]
 
     plot_media_por_cliente(path + '/score.csv')
-    # plot_evolucion_medias(path + '/score.csv')
+    plot_evolucion_medias(path + '/score.csv')
     # debuxar_diferencias_precision('MNIST/PROBAS/CompararPrecisions/backdoor')
     # debuxar_precision(path + '/acc.csv')

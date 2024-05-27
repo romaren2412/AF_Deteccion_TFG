@@ -2,32 +2,14 @@ import numpy as np
 import torch
 
 
-def select_byzantine_range(t):
+def select_byzantine_v2(t, models, undetected_byz):
     # decide attack type
     if t == 'partial_trim':
-        # partial knowledge trim attack
-        return partial_trim_range
+        return partial_trim(models, undetected_byz)
     elif t == 'full_trim':
-        # full knowledge trim attack
-        return full_trim_range
-    elif t == 'no':
-        return no_byz_range
-    elif t == 'gaussian':
-        return gaussian_attack_range
-    elif t == 'mean_attack':
-        return mean_attack_range
-    elif t == 'full_mean_attack':
-        return full_mean_attack_range
-    elif t == 'dir_partial_krum_lambda':
-        return dir_partial_krum_lambda_range
-    elif t == 'dir_full_krum_lambda':
-        return dir_full_krum_lambda_range
-    elif t in ('backdoor', 'dba', 'edge'):
-        return no_byz_range
-    elif t in ('label_flip', 'backdoor_sen_pixel'):
-        return no_byz_range
+        return full_trim(models, undetected_byz)
     else:
-        raise NotImplementedError
+        return no_byz(models)
 
 #######################################################################################################################
 # TARGETED #
@@ -110,54 +92,65 @@ def label_flip(data):
 # UNTARGETED #
 
 
-def no_byz_range(v, f):
+def no_byz(v):
     return v
 
 
-def partial_trim_range(v, undetected_byz):
+def partial_trim(models, undetected_byz):
     """
-    Partial-knowledge Trim attack. w.l.o.g., Asumimos que os primeiros f traballadores están comprometidos.
-    :param v: lista de gradientes
-    :param undetected_byz: lista de dispositivos byzantinos
+    Partial-knowledge Trim attack applied to a list of model state_dicts.
+    :param models: lista de state_dicts de los modelos de todos los clientes.
+    :param undetected_byz: lista de índices de los clientes byzantinos no detectados.
     """
-    # first compute the statistics
-    vi_shape = v[0].shape
-    todos_grads = torch.cat(v, dim=1)
-    byz_grads = todos_grads[:, undetected_byz]
-    e_mu = torch.mean(byz_grads, dim=1)  # mean
-    # standard deviation
-    e_sigma = torch.sqrt(torch.sum((byz_grads - e_mu.view(-1, 1)) ** 2, dim=1) / len(undetected_byz))
+    # Calcular las estadísticas usando los gradientes de los modelos byzantinos
+    byz_models = [models[i] for i in undetected_byz]
 
-    # APLICAR TÉCNICA NOS DISPOSITIVOS COMPROMETIDOS
-    for i in undetected_byz:
-        v[i] = (e_mu - e_sigma * torch.sign(e_mu) * 3.5).view(vi_shape)
+    for name in models[0].keys():  # Asumimos que todos los modelos tienen la misma estructura
+        # Concatenar los datos del mismo parámetro de todos los modelos byzantinos
+        all_grads = torch.stack([model[name].data.flatten() for model in byz_models], dim=1)
 
-    return v
+        # Calcular media y desviación estándar de estos gradientes
+        e_mu = torch.mean(all_grads, dim=1)
+        e_sigma = torch.sqrt(torch.sum((all_grads - e_mu.view(-1, 1)) ** 2, dim=1) / len(undetected_byz))
+
+        # Aplicar la técnica de ataque a los dispositivos comprometidos
+        attack_value = (e_mu - e_sigma * torch.sign(e_mu) * 3.5).view(models[0][name].data.shape)
+
+        for i in undetected_byz:
+            models[i][name].data = attack_value
+
+    return models
 
 
-def full_trim_range(v, undetected_byz):
+def full_trim(models, undetected_byz):
     """
-    v: lista de gradientes
-    undetected_byz: lista de dispositivos byzantinos
+    Full-knowledge Trim attack applied to a list of model state_dicts.
+    :param models: lista de state_dicts de los modelos de todos los clientes.
+    :param undetected_byz: lista de índices de los clientes byzantinos no detectados.
     """
-    vi_shape = v[0].shape
-    todos_grads = torch.cat(v, dim=1)
-    maximum_dim = torch.max(todos_grads, dim=1).values.view(vi_shape)
-    minimum_dim = torch.min(todos_grads, dim=1).values.view(vi_shape)
+    for name in models[0].keys():  # Asumimos que todos los modelos tienen la misma estructura
+        all_grads = torch.stack([model[name].data.flatten() for model in models], dim=1)
 
-    # Dirección do gradiente: positivo (1) ou negativo (-1) segundo a maioría dos valores
-    direction = torch.sign(torch.sum(torch.cat(v, dim=1), dim=-1, keepdim=True))
+        # Calcula el máximo y mínimo para cada dimensión de los gradientes
+        maximum_dim = torch.max(all_grads, dim=1).values
+        minimum_dim = torch.min(all_grads, dim=1).values
 
-    # Se a dirección é positiva, o gradiente será o mínimo, se é negativa, o máximo
-    directed_dim = (direction > 0) * minimum_dim + (direction < 0) * maximum_dim
+        # Determina la dirección general de los gradientes
+        direction = torch.sign(torch.sum(all_grads, dim=1))
 
-    # # APLICAR TÉCNICA DE ATAQUE AOS DISPOSITIVOS COMPROMETIDOS
-    # Se a dirección e o vector teñen a mesma orientación, o gradiente redúcese
-    # Se a dirección e o vector teñen orientacións opostas, o gradiente aumenta
-    random_12 = 2
-    for i in undetected_byz:
-        v[i] = directed_dim * ((direction * directed_dim > 0) / random_12 + (direction * directed_dim < 0) * random_12)
-    return v
+        # Selecciona el gradiente dirigido según la dirección
+        directed_dim = (direction > 0) * minimum_dim + (direction < 0) * maximum_dim
+        directed_dim = directed_dim.view(models[0][name].data.shape)
+
+        # Aplicar la técnica de ataque
+        random_12 = 2  # Este valor debería ser ajustado o calculado dinámicamente
+        for i in undetected_byz:
+            directed_value = directed_dim * (
+                        (direction.view(models[0][name].data.shape) * directed_dim > 0) / random_12 +
+                        (direction.view(models[0][name].data.shape) * directed_dim < 0) * random_12)
+            models[i][name].data = directed_value
+
+    return models
 
 
 def gaussian_attack_range(v, undetected_byz):
@@ -186,15 +179,12 @@ def gaussian_attack_range(v, undetected_byz):
     return v
 
 
-def mean_attack_range(v, undetected_byz):
+def mean_attack(v):
     """
     :param v: vector de gradientes
-    :param undetected_byz: lista de clientes byzantinos
     :return:
     """
-    for i in undetected_byz:
-        v[i] = -v[i]
-    return v
+    return -v
 
 
 def mean_attack_v2(model):

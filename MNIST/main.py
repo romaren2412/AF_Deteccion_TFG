@@ -1,5 +1,5 @@
-from MNIST.config import Config
-from MNIST.flare import flare
+from config import Config
+from fltrust import fltrust
 
 if __name__ == "__main__":
     c = Config()
@@ -12,4 +12,4 @@ if __name__ == "__main__":
     print("Tipo de ataque: ", c.byz_type)
     print("Home path: ", c.home_path)
 
-    flare(c, original_clients, byz_workers)
+    fltrust(c, original_clients, byz_workers)

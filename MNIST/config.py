@@ -16,8 +16,8 @@ def parse_args():
                         choices=['no', 'partial_trim', 'full_trim', 'mean_attack', 'full_mean_attack', 'gaussian',
                                  'dir_partial_krum_lambda', 'dir_full_krum_lambda', 'label_flip', 'backdoor', 'dba',
                                  'edge', 'backdoor_sen_pixel'])
-    parser.add_argument("--aggregation", help="aggregation rule", default='fedavg', type=str,
-                        choices=['fedavg', 'flare'])
+    parser.add_argument("--aggregation", help="aggregation rule", default='fltrust', type=str,
+                        choices=['fedavg', 'fltrust'])
 
     # Engadidas por Roi
     parser.add_argument("--home_path", help="home path", default='', type=str)

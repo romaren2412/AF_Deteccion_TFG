@@ -66,14 +66,7 @@ def preparar_datos():
     return train_data, test_data
 
 
-def crear_dataset_auxiliar(num_samples=10, img_size=(28, 28), num_classes=10):
-    # Generar datos aleatorios de imagen
-    images = torch.rand(num_samples, 1, img_size[0], img_size[1])
-
-    # Generar etiquetas aleatorias
-    labels = torch.randint(low=0, high=num_classes, size=(num_samples,))
-
-    # Crear un TensorDataset
-    dataset = TensorDataset(images, labels)
-
-    return dataset
+def crear_root_dataset(c, train_data, num_samples=100):
+    # Preparar dataloader para el conjunto de datos del servidor
+    root_dataset = torch.utils.data.Subset(train_data, range(num_samples))
+    return DataLoader(root_dataset, batch_size=c.BATCH_SIZE, shuffle=True, generator=torch.Generator(device='cuda'))

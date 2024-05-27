@@ -26,7 +26,7 @@ def gardar_precisions(path, precision_array, attack_type):
 
 def gardar_precisions_locais(path, precision_array, byzantine_index):
     headers = []
-    for i in range(len(precision_array[0])):
+    for i in range(len(precision_array)):
         client_type = 'Byz' if i in byzantine_index else 'Ben'
         headers.append(f'#{i}_{client_type}')
 

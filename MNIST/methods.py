@@ -1,16 +1,14 @@
 import torch
 import torch.optim as optim
-import torchvision.transforms as transforms
 import torch.utils.data
-import torch.nn as nn
-from copy import deepcopy
+import torchvision.transforms as transforms
 
-from MNIST.byzantine import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack_v2
-from clases_redes import MnistNetFLARE
+from MNIST.byzantine_models import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack
+from clases_redes import MnistNetFLARE, MnistNetFLTrust
 
 
 class MNISTTraining:
-    def __init__(self, c, trainloader, test_data) -> None:
+    def __init__(self, c, trainloader, test_data=None) -> None:
         """
         c-> configuration
         p-> porcentaxe de uso (probas dev, deberia ser o 1 para execucions reais)
@@ -25,13 +23,15 @@ class MNISTTraining:
         self.epochs = c.EPOCH
 
         self.sl = SupervisedLearning(c, self)
-        self.net = MnistNetFLARE(num_channels=1, num_outputs=10).to(self.device)
+        # self.net = MnistNetFLARE(num_channels=1, num_outputs=10).to(self.device)
+        self.net = MnistNetFLTrust().to(self.device)
 
         self.dba_index = None
         self.byz = False
         self.trainloader = trainloader
-        self.testloader = torch.utils.data.DataLoader(test_data, batch_size=500, shuffle=True,
-                                                      generator=torch.Generator(device='cuda'))
+        if test_data is not None:
+            self.testloader = torch.utils.data.DataLoader(test_data, batch_size=500, shuffle=True,
+                                                          generator=torch.Generator(device='cuda'))
 
 
 class SupervisedLearning:
@@ -40,8 +40,10 @@ class SupervisedLearning:
         self.device = c.DEVICE
         self.ap = ap
 
-    def adestrar(self, criterion, type_attack, target):
+    def adestrar(self, criterion, global_net, type_attack, target):
+        grad_list = []
         rede = self.ap.net.to(self.device)
+        rede.load_state_dict(global_net.state_dict())
         optimizer = optim.SGD(rede.parameters(), lr=self.c.LR)
 
         for data in self.ap.trainloader:
@@ -54,9 +56,14 @@ class SupervisedLearning:
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            grad_list.append([param.grad.clone() for param in rede.parameters()])
 
-        sent_model = self.untargeted_attack(deepcopy(rede), type_attack)
-        return sent_model.state_dict()
+        # Calcular la media de los gradientes
+        avg_grads = []
+        for grads in zip(*grad_list):
+            avg_grads.append(sum(grads) / len(grads))
+
+        return self.untargeted_attack(avg_grads, type_attack)
 
     def targeted_attack(self, data, type_attack, target):
         if self.ap.byz:
@@ -75,8 +82,30 @@ class SupervisedLearning:
     def untargeted_attack(self, model, type_attack):
         if self.ap.byz:
             if type_attack == "mean_attack":
-                return mean_attack_v2(model)
+                return mean_attack(model)
         return model
+
+    def adestrar_server(self, criterion, global_net):
+        grad_list = []
+        rede = self.ap.net.to(self.device)
+        rede.load_state_dict(global_net.state_dict())
+        optimizer = optim.SGD(rede.parameters(), lr=self.c.LR)
+        for data in self.ap.trainloader:
+            inputs, labels = data
+            inputs = inputs.to(self.device)
+            labels = labels.type(torch.LongTensor).to(self.device)
+            optimizer.zero_grad()
+            outputs = rede(inputs.float())
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            grad_list.append([param.grad.clone() for param in rede.parameters()])
+
+        # Calcular la media de los gradientes
+        avg_grads = []
+        for grads in zip(*grad_list):
+            avg_grads.append(sum(grads) / len(grads))
+        return avg_grads
 
     def test(self, net, testloader):
         # since we're not training, we don't need to calculate the gradients for our outputs
@@ -100,24 +129,14 @@ class SupervisedLearning:
         return acc
 
 
-def inicializar_global_model(num_channels, num_outputs, device, aux_loader, lr):
-    model = MnistNetFLARE(num_channels=num_channels, num_outputs=num_outputs)
-    model.to(device)
-    return pretrain_global_model(model, aux_loader, device, lr)
+def inicializar_global_model(num_channels, num_outputs, device):
+    # model = MnistNetFLARE(num_channels=num_channels, num_outputs=num_outputs)
+    model = MnistNetFLTrust()
+    return model.to(device)
 
 
-def pretrain_global_model(model, data_loader, device, lr, epochs=5):
-    model.train()
-    optimizer = optim.SGD(model.parameters(), lr=lr)
-    for epoch in range(epochs):
-        for data, target in data_loader:
-            data, target = data.to(device), target.to(device)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = nn.functional.nll_loss(output, target)
-            loss.backward()
-            optimizer.step()
-    return model
+def create_server_model(c, root_dataset):
+    return MNISTTraining(c, root_dataset)
 
 
 def create_local_models(num_clients, c, worker_loaders, test_data, byz_workers, global_net):
