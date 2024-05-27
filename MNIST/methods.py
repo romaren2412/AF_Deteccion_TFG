@@ -3,7 +3,7 @@ import torch.optim as optim
 import torch.utils.data
 import torchvision.transforms as transforms
 
-from MNIST.byzantine_models import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack
+from byzantine import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack
 from clases_redes import MnistNetFLARE, MnistNetFLTrust
 
 

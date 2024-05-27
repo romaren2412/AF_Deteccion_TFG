@@ -63,7 +63,7 @@ class Config:
 
         # DF FdAVG STUFF
         if args.batch_size == -1:
-            self.BATCH_SIZE = 64
+            self.BATCH_SIZE = 32
         else:
             self.BATCH_SIZE = args.batch_size
 
@@ -75,6 +75,8 @@ class Config:
             self.EPOCH = args.nepochs
 
         if args.lr == -1:
-            self.LR = 4e-2
+            self.LR = 5e-3
         else:
             self.LR = args.lr
+
+        self.GLOBAL_LR = 0.2

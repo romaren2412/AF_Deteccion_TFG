@@ -40,7 +40,7 @@ def aggregate_updates(global_model, normalized_updates, trust_scores):
     return global_model
 
 
-def update_model_with_weighted_gradients(net, client_gradients, trust_scores, lr):
+def update_model_with_weighted_gradients(net, normalized_grad_updates, trust_scores, lr):
     with torch.no_grad():
         total_trust = sum(trust_scores)  # Suma total de los puntajes de confianza
         if total_trust == 0:
@@ -49,10 +49,11 @@ def update_model_with_weighted_gradients(net, client_gradients, trust_scores, lr
         # Inicializar la actualización ponderada global como cero
         weighted_gradient_sum = [torch.zeros_like(param) for param in net.parameters()]
 
-        # Sumar los gradientes ponderados por los trust scores
-        for gradients, score in zip(client_gradients, trust_scores):
-            for grad, weighted_grad in zip(gradients, weighted_gradient_sum):
-                weighted_grad += (score / total_trust) * grad
+        # Ponderar los gradientes por los trust scores y sumarlos a la suma ponderada global
+        for normalized_grads, score in zip(normalized_grad_updates, trust_scores):
+            weight = score / total_trust
+            for param, norm_grad, sum_grad in zip(net.parameters(), normalized_grads, weighted_gradient_sum):
+                sum_grad += norm_grad * weight
 
         # Aplicar la actualización al modelo global
         for param, weighted_grad in zip(net.parameters(), weighted_gradient_sum):
@@ -61,22 +62,8 @@ def update_model_with_weighted_gradients(net, client_gradients, trust_scores, lr
 
 
 def equal_update(net, client_gradients, lr):
-    with torch.no_grad():
-        num_clients = len(client_gradients)
-        gradient_sum = [torch.zeros_like(param) for param in net.parameters()]
-        for gradients in client_gradients:
-            for grad, sum_grad in zip(gradients, gradient_sum):
-                sum_grad += grad
-        mean_gradients = [sum_grad / num_clients for sum_grad in gradient_sum]
-        for param, mean_grad in zip(net.parameters(), mean_gradients):
-            if param.requires_grad:
-                param.data -= lr * mean_grad
-
-
-def simple_mean(param_list, net, lr):
-    # CÁLCULO DA MEDIA DOS GRADIENTES
-    mean_nd = torch.mean(torch.cat(param_list, dim=1), dim=-1, keepdim=True)
-
+    client_gradients_flatten = [torch.cat([param.flatten() for param in grad]) for grad in client_gradients]
+    mean_nd = torch.mean(torch.stack(client_gradients_flatten), dim=0)
     with torch.no_grad():
         idx = 0
         # Actualización dos parámetros

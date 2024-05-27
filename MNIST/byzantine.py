@@ -184,13 +184,9 @@ def mean_attack(v):
     :param v: vector de gradientes
     :return:
     """
-    return -v
-
-
-def mean_attack_v2(model):
-    for param in model.parameters():
-        param.data = -param.data
-    return model
+    for i in range(len(v)):
+        v[i] = -v[i]
+    return v
 
 
 def full_mean_attack_range(v, undetected_byz_index):

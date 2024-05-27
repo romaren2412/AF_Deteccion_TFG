@@ -99,14 +99,13 @@ def fltrust(c, total_clients, byz_workers):
 
             # Federar
             if c.aggregation == 'fedavg':
-                equal_update(global_net, client_updates, c.LR)
+                equal_update(global_net, norm_updates, c.GLOBAL_LR)
             else:
-                update_model_with_weighted_gradients(global_net, norm_updates, trust_scores, c.LR)
-
-            # Gardar resultados
-            gardar_puntuacions(trust_scores_array, path, byz_workers)
-            local_precisions.append(local_precisions_ep)
-            gardar_precisions_locais(path, local_precisions, byz_workers)
+                update_model_with_weighted_gradients(global_net, norm_updates, trust_scores, c.GLOBAL_LR)
+                # Gardar resultados
+                gardar_puntuacions(trust_scores_array, path, byz_workers)
+                local_precisions.append(local_precisions_ep)
+                gardar_precisions_locais(path, local_precisions, byz_workers)
 
             #############################################################################
             # PRECISIÓNS
