@@ -40,23 +40,32 @@ class SupervisedLearning:
         self.device = c.DEVICE
         self.ap = ap
 
-    def adestrar(self, criterion, global_net, type_attack, target):
+    def adestrar(self, c, criterion, global_net, target):
+        # Configuración
+        type_attack = c.byz_type
+        freq = c.FL_FREQ
+
+        # Bucle de adestramento
         grad_list = []
         rede = self.ap.net.to(self.device)
         rede.load_state_dict(global_net.state_dict())
         optimizer = optim.SGD(rede.parameters(), lr=self.c.LR)
 
-        for data in self.ap.trainloader:
-            inputs, labels = self.targeted_attack(data, type_attack, target)
-            labels = labels.type(torch.LongTensor)
-            inputs = inputs.to(self.device)
-            labels = labels.to(self.device)
-            optimizer.zero_grad()
-            outputs = rede(inputs.float())
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            grad_list.append([param.grad.clone() for param in rede.parameters()])
+        local_epoch = 0
+        while local_epoch < freq:
+            grad_list = []
+            local_epoch += 1
+            for data in self.ap.trainloader:
+                inputs, labels = self.targeted_attack(data, type_attack, target)
+                labels = labels.type(torch.LongTensor)
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                optimizer.zero_grad()
+                outputs = rede(inputs.float())
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                grad_list.append([param.grad.clone() for param in rede.parameters()])
 
         # Calcular la media de los gradientes
         avg_grads = []
@@ -85,26 +94,32 @@ class SupervisedLearning:
                 return mean_attack(model)
         return model
 
-    def adestrar_server(self, criterion, global_net):
+    def adestrar_server(self, c, criterion, global_net):
+        # Bucle de adestramento
         grad_list = []
         rede = self.ap.net.to(self.device)
         rede.load_state_dict(global_net.state_dict())
         optimizer = optim.SGD(rede.parameters(), lr=self.c.LR)
-        for data in self.ap.trainloader:
-            inputs, labels = data
-            inputs = inputs.to(self.device)
-            labels = labels.type(torch.LongTensor).to(self.device)
-            optimizer.zero_grad()
-            outputs = rede(inputs.float())
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            grad_list.append([param.grad.clone() for param in rede.parameters()])
+
+        local_epoch = 0
+        while local_epoch < c.FL_FREQ:
+            grad_list = []
+            local_epoch += 1
+            for inputs, labels in self.ap.trainloader:
+                inputs = inputs.to(self.device)
+                labels = labels.type(torch.LongTensor).to(self.device)
+                optimizer.zero_grad()
+                outputs = rede(inputs.float())
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                grad_list.append([param.grad.clone() for param in rede.parameters()])
 
         # Calcular la media de los gradientes
         avg_grads = []
         for grads in zip(*grad_list):
             avg_grads.append(sum(grads) / len(grads))
+
         return avg_grads
 
     def test(self, net, testloader):

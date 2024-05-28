@@ -67,10 +67,10 @@ class Config:
         else:
             self.BATCH_SIZE = args.batch_size
 
-        self.FL_FREQ = 5
+        self.FL_FREQ = 1
 
         if args.nepochs == -1:
-            self.EPOCH = 20
+            self.EPOCH = 15
         else:
             self.EPOCH = args.nepochs
 
@@ -79,4 +79,4 @@ class Config:
         else:
             self.LR = args.lr
 
-        self.GLOBAL_LR = 0.2
+        self.GLOBAL_LR = 0.15

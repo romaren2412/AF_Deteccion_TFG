@@ -60,8 +60,6 @@ def fltrust(c, total_clients, byz_workers):
         local_precisions = []
         trust_scores_array = []
 
-        grad_list = []
-
         ###################################################################################################
 
         # EXECUTAR ATAQUES
@@ -77,21 +75,18 @@ def fltrust(c, total_clients, byz_workers):
         for e in range(c.EPOCH):
             client_updates = []
             local_precisions_ep = []
-            local_epoch = 0
 
-            while local_epoch < c.FL_FREQ:
-                local_epoch += 1
-                # ADESTRAMENTO DE CADA CLIENTE
-                for i, ap in enumerate(aprendedores):
-                    update = ap.sl.adestrar(nn.CrossEntropyLoss(), global_net, c.byz_type, target_backdoor_dba)
-                    if local_epoch == c.FL_FREQ:
-                        client_updates.append(update)
-                        acc = ap.sl.test(ap.net, ap.testloader)
-                        print(f"[Epoca {e}] Cliente: ", str(i), " - Accuracy: ", {acc})
-                        local_precisions_ep.append(acc)
+            # ADESTRAMENTO DE CADA CLIENTE
+            for i, ap in enumerate(aprendedores):
+                update = ap.sl.adestrar(c, nn.CrossEntropyLoss(), global_net, target_backdoor_dba)
+                client_updates.append(update)
+                if (e + 1) % 3 == 0:
+                    acc = ap.sl.test(ap.net, ap.testloader)
+                    print(f"[Epoca {e}] Cliente: ", str(i), " - Accuracy: ", {acc})
+                    local_precisions_ep.append(acc)
 
-                # ADESTRAMENTO DO SERVIDOR
-                server_model_update = server_model.sl.adestrar_server(nn.CrossEntropyLoss(), global_net)
+            # ADESTRAMENTO DO SERVIDOR
+            server_model_update = server_model.sl.adestrar_server(c, nn.CrossEntropyLoss(), global_net)
 
             # ACTUALIZAR MODELO GLOBAL
             trust_scores, norm_updates = compute_trust_scores_and_normalize(client_updates, server_model_update)
@@ -102,16 +97,11 @@ def fltrust(c, total_clients, byz_workers):
                 equal_update(global_net, norm_updates, c.GLOBAL_LR)
             else:
                 update_model_with_weighted_gradients(global_net, norm_updates, trust_scores, c.GLOBAL_LR)
-                # Gardar resultados
-                gardar_puntuacions(trust_scores_array, path, byz_workers)
-                local_precisions.append(local_precisions_ep)
-                gardar_precisions_locais(path, local_precisions, byz_workers)
 
-            #############################################################################
-            # PRECISIÓNS
-            # CALCULAR A PRECISIÓN DO ENTRENO CADA 20 ITERACIÓNS
-            if (e + 1) % 2 == 0:
-                testear_precisions(global_test_data_loader, global_net, device, e, precision_array, path,
-                                   target_backdoor_dba, c.byz_type)
+            gardar_puntuacions(trust_scores_array, path, byz_workers)
+            local_precisions.append(local_precisions_ep)
+            gardar_precisions_locais(path, local_precisions, byz_workers)
+            testear_precisions(global_test_data_loader, global_net, device, e, precision_array, path,
+                               target_backdoor_dba, c.byz_type)
 
         resumo_final(global_test_data_loader, global_net, device)

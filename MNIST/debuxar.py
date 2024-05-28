@@ -48,7 +48,7 @@ def plot_media_por_cliente(ruta):
     plt.xlabel('Cliente')
     plt.ylabel('Media de Puntuación')
     # plt.yscale('log')
-    plt.title('Media de Puntuacións por Cliente')
+    plt.title(f'Media de Puntuacións por Cliente - {attack_type}')
     plt.xticks(indices, [f'#{index}' for index in indices])
 
     if gardar:
@@ -137,11 +137,11 @@ def debuxar_precision(ruta):
 if __name__ == "__main__":
     gardar = True
 
-    path = 'PROBAS/FedAvg/backdoor'
+    path = 'PROBAS/Antes/fltrust/backdoor'
     save_path = path
     attack_type = path.split('/')[-1]
 
     # plot_media_por_cliente(path + '/score.csv')
     # plot_evolucion_medias(path + '/score.csv')
-    debuxar_diferencias_precision('PROBAS/CompararPrecisions/no')
+    debuxar_diferencias_precision('PROBAS/fedavg/v2/backdoor')
     # debuxar_precision(path + '/acc.csv')
