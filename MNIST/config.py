@@ -16,17 +16,9 @@ def parse_args():
                         choices=['no', 'partial_trim', 'full_trim', 'mean_attack', 'full_mean_attack', 'gaussian',
                                  'dir_partial_krum_lambda', 'dir_full_krum_lambda', 'label_flip', 'backdoor', 'dba',
                                  'edge', 'backdoor_sen_pixel'])
-    parser.add_argument("--aggregation", help="aggregation rule", default='fltrust', type=str,
-                        choices=['fedavg', 'fltrust'])
 
     # Engadidas por Roi
     parser.add_argument("--home_path", help="home path", default='', type=str)
-
-    parser.add_argument("--tipo_exec", help="tipo de execucion", default='detect', type=str,
-                        choices=['detect', 'loop', 'no_detect'])
-    parser.add_argument("--silhouette", help="medida de confianza necesaria (silhouette)", default=0.0,
-                        type=float)
-    parser.add_argument("--det_start", help="Inicio de deteccion", default=-1, type=int)
     return parser.parse_args()
 
 
@@ -63,20 +55,20 @@ class Config:
 
         # DF FdAVG STUFF
         if args.batch_size == -1:
-            self.BATCH_SIZE = 32
+            self.BATCH_SIZE = 64
         else:
             self.BATCH_SIZE = args.batch_size
 
         self.FL_FREQ = 1
 
         if args.nepochs == -1:
-            self.EPOCH = 15
+            self.EPOCH = 100
         else:
             self.EPOCH = args.nepochs
 
         if args.lr == -1:
-            self.LR = 5e-3
+            self.LR = 1e-3
         else:
             self.LR = args.lr
 
-        self.GLOBAL_LR = 0.15
+        self.GLOBAL_LR = 1

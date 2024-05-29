@@ -79,7 +79,7 @@ def plot_evolucion_medias(ruta):
 
 def debuxar_diferencias_precision(ruta):
     # Cargar datos desde un archivo CSV
-    data = pd.read_csv(ruta + '/acc.csv')
+    data = pd.read_csv(ruta + '/acc_comp.csv')
     ataque = ruta.split('/')[-1]
 
     # Crear un gráfico de líneas para ACC_FedAvg y ACC_Flare
@@ -87,7 +87,7 @@ def debuxar_diferencias_precision(ruta):
     plt.plot(data['Iteracions'], data['ACC_Global'], label='ACC_FedAvg', marker='o', linestyle='--', color='gray')
     plt.plot(data['Iteracions'], data['ACC_FLTrust'], label='ACC_FLTrust', marker='x', linestyle='-', color='blue')
 
-    if ataque == 'backdoor':
+    if ataque in ('backdoor', 'dba'):
         # Trazar también las métricas de ASR si es un backdoor
         plt.plot(data['Iteracions'], data['ASR'], label='ASR_FedAvg', linestyle='dotted',
                  color='gray')
@@ -137,11 +137,11 @@ def debuxar_precision(ruta):
 if __name__ == "__main__":
     gardar = True
 
-    path = 'PROBAS/Antes/fltrust/backdoor'
+    path = 'PROBAS/ProbasDef/mean_attack'
     save_path = path
     attack_type = path.split('/')[-1]
 
     # plot_media_por_cliente(path + '/score.csv')
     # plot_evolucion_medias(path + '/score.csv')
-    debuxar_diferencias_precision('PROBAS/fedavg/v2/backdoor')
+    debuxar_diferencias_precision('PROBAS/FedAvg/no')
     # debuxar_precision(path + '/acc.csv')

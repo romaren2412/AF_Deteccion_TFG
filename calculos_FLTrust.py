@@ -2,36 +2,18 @@ import torch
 import torch.nn.functional as F
 
 
-def compute_trust_scores(client_updates, server_update):
-    trust_scores = []
-    # Extraer los parámetros del modelo del servidor y aplanarlos en un solo vector
-    server_weights = torch.cat([val.flatten() for val in server_update.values()])
-
-    for update in client_updates:
-        # Extraer y aplanar los parámetros del modelo del cliente en un solo vector
-        client_weights = torch.cat([val.flatten() for val in update.values()])
-        # Calcular la similitud del coseno entre los pesos del cliente y del servidor
-        cosine_sim = F.cosine_similarity(client_weights.unsqueeze(0), server_weights.unsqueeze(0), dim=1)
-        # Aplicar ReLU para obtener la puntuación de confianza
-        trust_score = F.relu(cosine_sim)
-        trust_scores.append(trust_score)
-
-    # Concatenar todas las puntuaciones de confianza en un tensor para manipulación futura
-    return torch.cat(trust_scores)
-
-
 def compute_trust_scores_and_normalize(client_grad_updates, server_grad_update):
     trust_scores = []
     normalized_grad_updates = []
 
     # Extraer y aplanar los gradientes del modelo del servidor en un solo vector
-    server_grads = torch.cat([g.flatten() for g in server_grad_update])
+    server_grads = torch.cat([server_grad_update[key].flatten() for key in server_grad_update])
     server_norm = torch.norm(server_grads)
 
     for grad_update in client_grad_updates:
         # Extraer y aplanar los gradientes propuestos de cada cliente
-        client_grads = torch.cat([g.flatten() for g in grad_update])
-        original_shapes = [g.shape for g in grad_update]
+        client_grads = torch.cat([grad_update[key].flatten() for key in grad_update])
+        original_shapes = [grad_update[key].shape for key in grad_update]
 
         # COMPUTAR TRUST SCORES
         # Uso de cosine_similarity para medir la similitud de dirección entre los gradientes del cliente y del servidor
@@ -58,12 +40,3 @@ def compute_trust_scores_and_normalize(client_grad_updates, server_grad_update):
         normalized_grad_updates.append(reshaped_grads)
 
     return trust_scores, normalized_grad_updates
-
-
-def reconstruct_and_load_state_dict(model, flat_state_dict):
-    state_dict = {}
-    index = 0
-    for key, val in model.state_dict().items():
-        state_dict[key] = flat_state_dict[index:index + val.numel()].reshape(val.shape)
-        index += val.numel()
-    model.load_state_dict(state_dict)

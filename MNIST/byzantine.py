@@ -1,5 +1,8 @@
 import numpy as np
 import torch
+from config import Config
+
+c = Config()
 
 
 def select_byzantine_v2(t, models, undetected_byz):
@@ -179,7 +182,7 @@ def gaussian_attack_range(v, undetected_byz):
     return v
 
 
-def mean_attack(v):
+def mean_attack_gradientes(v):
     """
     :param v: vector de gradientes
     :return:
@@ -187,6 +190,17 @@ def mean_attack(v):
     for i in range(len(v)):
         v[i] = -v[i]
     return v
+
+
+def mean_attack_modelo(model):
+    for param in model.parameters():
+        param.data = -param.data
+
+
+def scaling_attack(model, scaling_factor=c.SIZE):
+    for param in model.parameters():
+        param.data = param.data * scaling_factor
+    return model
 
 
 def full_mean_attack_range(v, undetected_byz_index):

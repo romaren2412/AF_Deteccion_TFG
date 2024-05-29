@@ -8,7 +8,7 @@ import torch.utils.data
 from MNIST.arquivos import *
 from MNIST.datos import repartir_datos, preparar_datos, crear_root_dataset
 from MNIST.methods import inicializar_global_model, create_local_models, create_server_model
-from aggregation import equal_update, update_model_with_weighted_gradients
+from aggregation import update_model_with_weighted_gradients
 from calculos_FLTrust import *
 
 
@@ -40,7 +40,7 @@ def fltrust(c, total_clients, byz_workers):
         worker_loaders = repartir_datos(c, train_data, len(total_clients))
 
         # DATASET AUXILIAR
-        root_dataloader = crear_root_dataset(c, train_data)
+        root_dataloader = crear_root_dataset(c, train_data, len(total_clients))
         ####################################################################################################
 
         # ARQUITECTURA DO MODELO - CNN
@@ -74,13 +74,15 @@ def fltrust(c, total_clients, byz_workers):
         # CADA ÉPOCA
         for e in range(c.EPOCH):
             client_updates = []
+            client_dict_updates = []
             local_precisions_ep = []
 
             # ADESTRAMENTO DE CADA CLIENTE
             for i, ap in enumerate(aprendedores):
-                update = ap.sl.adestrar(c, nn.CrossEntropyLoss(), global_net, target_backdoor_dba)
+                update, update_dict = ap.sl.adestrar(c, nn.CrossEntropyLoss(), global_net, target_backdoor_dba)
                 client_updates.append(update)
-                if (e + 1) % 3 == 0:
+                client_dict_updates.append(update_dict)
+                if (e + 1) % 20 == 0:
                     acc = ap.sl.test(ap.net, ap.testloader)
                     print(f"[Epoca {e}] Cliente: ", str(i), " - Accuracy: ", {acc})
                     local_precisions_ep.append(acc)
@@ -93,15 +95,15 @@ def fltrust(c, total_clients, byz_workers):
             trust_scores_array.append(trust_scores)
 
             # Federar
-            if c.aggregation == 'fedavg':
-                equal_update(global_net, norm_updates, c.GLOBAL_LR)
-            else:
-                update_model_with_weighted_gradients(global_net, norm_updates, trust_scores, c.GLOBAL_LR)
+            update_model_with_weighted_gradients(global_net, norm_updates, trust_scores, c.GLOBAL_LR)
 
             gardar_puntuacions(trust_scores_array, path, byz_workers)
-            local_precisions.append(local_precisions_ep)
-            gardar_precisions_locais(path, local_precisions, byz_workers)
-            testear_precisions(global_test_data_loader, global_net, device, e, precision_array, path,
-                               target_backdoor_dba, c.byz_type)
+
+            if (e + 1) % 5 == 0:
+                testear_precisions(global_test_data_loader, global_net, device, e, precision_array, path,
+                                   target_backdoor_dba, c.byz_type)
+            if (e + 1) % 20 == 0:
+                local_precisions.append(local_precisions_ep)
+                gardar_precisions_locais(path, local_precisions, byz_workers)
 
         resumo_final(global_test_data_loader, global_net, device)

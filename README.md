@@ -1,4 +1,4 @@
-# FLTRust
+# FLTrust
 
 Explicación básica dos arquivos:
 1. arquivos: Xestiona a modificación dos arquivos de datos

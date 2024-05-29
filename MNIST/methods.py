@@ -3,8 +3,8 @@ import torch.optim as optim
 import torch.utils.data
 import torchvision.transforms as transforms
 
-from byzantine import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack
-from clases_redes import MnistNetFLARE, MnistNetFLTrust
+from byzantine import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack_modelo, scaling_attack
+from clases_redes import MnistNetFLTrust
 
 
 class MNISTTraining:
@@ -41,22 +41,16 @@ class SupervisedLearning:
         self.ap = ap
 
     def adestrar(self, c, criterion, global_net, target):
-        # Configuración
-        type_attack = c.byz_type
-        freq = c.FL_FREQ
-
         # Bucle de adestramento
-        grad_list = []
         rede = self.ap.net.to(self.device)
         rede.load_state_dict(global_net.state_dict())
         optimizer = optim.SGD(rede.parameters(), lr=self.c.LR)
 
         local_epoch = 0
-        while local_epoch < freq:
-            grad_list = []
+        while local_epoch < c.FL_FREQ:
             local_epoch += 1
             for data in self.ap.trainloader:
-                inputs, labels = self.targeted_attack(data, type_attack, target)
+                inputs, labels = self.targeted_attack(data, c.byz_type, target)
                 labels = labels.type(torch.LongTensor)
                 inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
@@ -65,14 +59,9 @@ class SupervisedLearning:
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
-                grad_list.append([param.grad.clone() for param in rede.parameters()])
 
-        # Calcular la media de los gradientes
-        avg_grads = []
-        for grads in zip(*grad_list):
-            avg_grads.append(sum(grads) / len(grads))
-
-        return self.untargeted_attack(avg_grads, type_attack)
+        self.untargeted_attack(c.byz_type)
+        return self.calcular_diferencias(global_net), rede.state_dict()
 
     def targeted_attack(self, data, type_attack, target):
         if self.ap.byz:
@@ -88,22 +77,25 @@ class SupervisedLearning:
                 return label_flip(data)
         return data
 
-    def untargeted_attack(self, model, type_attack):
+    def untargeted_attack(self, type_attack):
         if self.ap.byz:
             if type_attack == "mean_attack":
-                return mean_attack(model)
-        return model
+                mean_attack_modelo(self.ap.net)
+            if type_attack in ("backdoor", "dba"):
+                scaling_attack(self.ap.net)
+
+    def calcular_diferencias(self, global_net):
+        local_params = self.ap.net.state_dict()
+        global_params = global_net.state_dict()
+        local_update = {key: local_params[key] - global_params[key] for key in global_params}
+        return local_update
 
     def adestrar_server(self, c, criterion, global_net):
-        # Bucle de adestramento
-        grad_list = []
         rede = self.ap.net.to(self.device)
         rede.load_state_dict(global_net.state_dict())
         optimizer = optim.SGD(rede.parameters(), lr=self.c.LR)
-
         local_epoch = 0
         while local_epoch < c.FL_FREQ:
-            grad_list = []
             local_epoch += 1
             for inputs, labels in self.ap.trainloader:
                 inputs = inputs.to(self.device)
@@ -113,14 +105,7 @@ class SupervisedLearning:
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
-                grad_list.append([param.grad.clone() for param in rede.parameters()])
-
-        # Calcular la media de los gradientes
-        avg_grads = []
-        for grads in zip(*grad_list):
-            avg_grads.append(sum(grads) / len(grads))
-
-        return avg_grads
+        return self.calcular_diferencias(global_net)
 
     def test(self, net, testloader):
         # since we're not training, we don't need to calculate the gradients for our outputs

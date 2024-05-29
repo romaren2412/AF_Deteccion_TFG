@@ -2,7 +2,7 @@
 import numpy as np
 import torch
 import torchvision
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, ConcatDataset, Subset
 from torchvision import transforms
 
 
@@ -66,7 +66,13 @@ def preparar_datos():
     return train_data, test_data
 
 
-def crear_root_dataset(c, train_data, num_samples=100):
-    # Preparar dataloader para el conjunto de datos del servidor
-    root_dataset = torch.utils.data.Subset(train_data, range(num_samples))
-    return DataLoader(root_dataset, batch_size=c.BATCH_SIZE, shuffle=True, generator=torch.Generator(device='cuda'))
+def crear_root_dataset(c, train_data, num_clients, num_samples=100):
+    target_size = 60000 // num_clients
+    repeat_factor = target_size // num_samples
+    root_subset = Subset(train_data, range(num_samples))
+    repeated_subsets = [root_subset for _ in range(repeat_factor)]
+    root_dataset = ConcatDataset(repeated_subsets)
+    root_dataloader = DataLoader(root_dataset, batch_size=c.BATCH_SIZE, shuffle=True,
+                                 generator=torch.Generator(device='cuda'))
+
+    return root_dataloader
