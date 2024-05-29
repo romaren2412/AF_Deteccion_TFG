@@ -47,7 +47,7 @@ def plot_media_por_cliente(ruta):
     plt.bar(indices, mean_scores, color=colors)
     plt.xlabel('Cliente')
     plt.ylabel('Media de Puntuación')
-    # plt.yscale('log')
+    plt.yscale('log')
     plt.title('Media de Puntuacións por Cliente')
     plt.xticks(indices, [f'#{index}' for index in indices])
 
@@ -79,19 +79,19 @@ def plot_evolucion_medias(ruta):
 
 def debuxar_diferencias_precision(ruta):
     # Cargar datos desde un archivo CSV
-    data = pd.read_csv(ruta + '/acc.csv')
+    data = pd.read_csv(ruta + '/acc_comp.csv')
     ataque = ruta.split('/')[-1]
 
     # Crear un gráfico de líneas para ACC_FedAvg y ACC_Flare
     plt.figure(figsize=(10, 6))
-    plt.plot(data['Iteracions'], data['ACC_FedAvg'], label='ACC_FedAvg', marker='o', linestyle='--', color='gray')
-    plt.plot(data['Iteracions'], data['ACC_Flare'], label='ACC_Flare', marker='x', linestyle='-', color='blue')
+    plt.plot(data['Iteracions'], data['ACC_Global'], label='ACC_FedAvg', marker='o', linestyle='-', color='gray')
+    plt.plot(data['Iteracions'], data['ACC_FLARE'], label='ACC_Flare', marker='x', linestyle='-', color='blue')
 
     if ataque == 'backdoor':
         # Trazar también las métricas de ASR si es un backdoor
-        plt.plot(data['Iteracions'], data['ASR_FedAvg'], label='ASR_FedAvg', linestyle='dotted',
+        plt.plot(data['Iteracions'], data['ASR'], label='ASR_FedAvg', linestyle='dotted',
                  color='gray')
-        plt.plot(data['Iteracions'], data['ASR_Flare'], label='ASR_Flare', linestyle='dotted', color='blue')
+        plt.plot(data['Iteracions'], data['ASR_FLARE'], label='ASR_Flare', linestyle='dotted', color='blue')
 
     # Añadiendo título y etiquetas
     plt.title('FedAvg VS Flare - {}'.format(ataque))
@@ -137,11 +137,11 @@ def debuxar_precision(ruta):
 if __name__ == "__main__":
     gardar = True
 
-    path = 'MNIST/PROBAS/SGD/mean_attack'
+    path = 'PROBAS/ProbasDef/Flare/no'
     save_path = path
     attack_type = path.split('/')[-1]
 
-    plot_media_por_cliente(path + '/score.csv')
+    # plot_media_por_cliente(path + '/score.csv')
     # plot_evolucion_medias(path + '/score.csv')
-    # debuxar_diferencias_precision('MNIST/PROBAS/CompararPrecisions/backdoor')
+    # debuxar_diferencias_precision('PROBAS/Probas_Referencia/backdoor')
     # debuxar_precision(path + '/acc.csv')

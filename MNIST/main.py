@@ -13,3 +13,4 @@ if __name__ == "__main__":
     print("Home path: ", c.home_path)
 
     flare(c, original_clients, byz_workers)
+

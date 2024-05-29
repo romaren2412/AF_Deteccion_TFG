@@ -1,33 +1,8 @@
 import numpy as np
 import torch
 
-
-def select_byzantine_range(t):
-    # decide attack type
-    if t == 'partial_trim':
-        # partial knowledge trim attack
-        return partial_trim_range
-    elif t == 'full_trim':
-        # full knowledge trim attack
-        return full_trim_range
-    elif t == 'no':
-        return no_byz_range
-    elif t == 'gaussian':
-        return gaussian_attack_range
-    elif t == 'mean_attack':
-        return mean_attack_range
-    elif t == 'full_mean_attack':
-        return full_mean_attack_range
-    elif t == 'dir_partial_krum_lambda':
-        return dir_partial_krum_lambda_range
-    elif t == 'dir_full_krum_lambda':
-        return dir_full_krum_lambda_range
-    elif t in ('backdoor', 'dba', 'edge'):
-        return no_byz_range
-    elif t in ('label_flip', 'backdoor_sen_pixel'):
-        return no_byz_range
-    else:
-        raise NotImplementedError
+from config import Config
+c = Config()
 
 #######################################################################################################################
 # TARGETED #
@@ -186,20 +161,15 @@ def gaussian_attack_range(v, undetected_byz):
     return v
 
 
-def mean_attack_range(v, undetected_byz):
-    """
-    :param v: vector de gradientes
-    :param undetected_byz: lista de clientes byzantinos
-    :return:
-    """
-    for i in undetected_byz:
-        v[i] = -v[i]
-    return v
-
-
 def mean_attack_v2(model):
     for param in model.parameters():
         param.data = -param.data
+    return model
+
+
+def scaling_attack(model, scaling_factor=c.SIZE):
+    for param in model.parameters():
+        param.data = param.data * scaling_factor
     return model
 
 

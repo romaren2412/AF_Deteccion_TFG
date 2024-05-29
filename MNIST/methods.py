@@ -3,10 +3,9 @@ import torch.optim as optim
 import torchvision.transforms as transforms
 import torch.utils.data
 import torch.nn as nn
-from copy import deepcopy
 
-from MNIST.byzantine import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack_v2
-from clases_redes import MnistNetFLARE
+from MNIST.byzantine import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack_v2, scaling_attack
+from clases_redes import MnistNetFLARE, MnistNetFLTrust
 
 
 class MNISTTraining:
@@ -25,7 +24,8 @@ class MNISTTraining:
         self.epochs = c.EPOCH
 
         self.sl = SupervisedLearning(c, self)
-        self.net = MnistNetFLARE(num_channels=1, num_outputs=10).to(self.device)
+        # self.net = MnistNetFLARE(num_channels=1, num_outputs=10).to(self.device)
+        self.net = MnistNetFLTrust().to(self.device)
 
         self.dba_index = None
         self.byz = False
@@ -40,23 +40,27 @@ class SupervisedLearning:
         self.device = c.DEVICE
         self.ap = ap
 
-    def adestrar(self, criterion, type_attack, target):
+    def adestrar(self, c, criterion, global_net, target):
         rede = self.ap.net.to(self.device)
+        rede.load_state_dict(global_net.state_dict())
         optimizer = optim.SGD(rede.parameters(), lr=self.c.LR)
 
-        for data in self.ap.trainloader:
-            inputs, labels = self.targeted_attack(data, type_attack, target)
-            labels = labels.type(torch.LongTensor)
-            inputs = inputs.to(self.device)
-            labels = labels.to(self.device)
-            optimizer.zero_grad()
-            outputs = rede(inputs.float())
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+        local_epoch = 0
+        while local_epoch < c.FL_FREQ:
+            local_epoch += 1
+            for data in self.ap.trainloader:
+                inputs, labels = self.targeted_attack(data, c.byz_type, target)
+                labels = labels.type(torch.LongTensor)
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                optimizer.zero_grad()
+                outputs = rede(inputs.float())
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
 
-        sent_model = self.untargeted_attack(deepcopy(rede), type_attack)
-        return sent_model.state_dict()
+        self.untargeted_attack(c.byz_type)
+        return self.calcular_diferencias(global_net)
 
     def targeted_attack(self, data, type_attack, target):
         if self.ap.byz:
@@ -72,11 +76,18 @@ class SupervisedLearning:
                 return label_flip(data)
         return data
 
-    def untargeted_attack(self, model, type_attack):
+    def untargeted_attack(self, type_attack):
         if self.ap.byz:
             if type_attack == "mean_attack":
-                return mean_attack_v2(model)
-        return model
+                mean_attack_v2(self.ap.net)
+            elif type_attack in ("dba", "backdoor"):
+                scaling_attack(self.ap.net)
+
+    def calcular_diferencias(self, global_net):
+        local_params = self.ap.net.state_dict()
+        global_params = global_net.state_dict()
+        local_update = {key: local_params[key] - global_params[key] for key in global_params}
+        return local_update
 
     def test(self, net, testloader):
         # since we're not training, we don't need to calculate the gradients for our outputs
@@ -101,7 +112,8 @@ class SupervisedLearning:
 
 
 def inicializar_global_model(num_channels, num_outputs, device, aux_loader, lr):
-    model = MnistNetFLARE(num_channels=num_channels, num_outputs=num_outputs)
+    # model = MnistNetFLARE(num_channels=num_channels, num_outputs=num_outputs)
+    model = MnistNetFLTrust()
     model.to(device)
     return pretrain_global_model(model, aux_loader, device, lr)
 

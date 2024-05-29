@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from MNIST.arquivos import *
 from MNIST.datos import repartir_datos, preparar_datos, crear_dataset_auxiliar
 from MNIST.methods import inicializar_global_model, create_local_models
-from aggregation import aggregate_models, equal_aggregate_models
+from aggregation import update_model_with_weighted_gradients
 from calculos_FLARE import *
 
 
@@ -81,22 +81,16 @@ def flare(c, total_clients, byz_workers):
             all_plrs = []
 
             # ADESTRAMENTO DE CADA CLIENTE
-            while local_epoch < c.FL_FREQ:
-                local_epoch += 1
-                for i, ap in enumerate(aprendedores):
-                    update = ap.sl.adestrar(nn.CrossEntropyLoss(), c.byz_type, target_backdoor_dba)
-                    if local_epoch == c.FL_FREQ:
-                        all_updates.append(update)
-                        # Cargar o estado enviado ao servidor (no caso de ataques untargeted)
-                        ap.net.load_state_dict(update)
-                        acc = ap.sl.test(ap.net, ap.testloader)
-                        print(f"[Epoca {e}, {local_epoch}] Cliente: ", str(i), " - Accuracy: ", {acc})
-                        local_precision_array_ep.append(acc)
-
-            # EXTRACCIÓN DE PLRs
             for i, ap in enumerate(aprendedores):
+                update = ap.sl.adestrar(c, nn.CrossEntropyLoss(), global_net, target_backdoor_dba)
                 plr = extraer_plrs(ap.net, aux_loader, device)
+                # EXTRACCIÓN DE PLRs
+                all_updates.append(update)
                 all_plrs.append(plr)
+                if (e + 1) % 5 == 0:
+                    acc = ap.sl.test(ap.net, ap.testloader)
+                    print(f"[Epoca {e}, {local_epoch}] Cliente: ", str(i), " - Accuracy: ", {acc})
+                    local_precision_array_ep.append(acc)
 
             # Calcular MMD
             mmd_matrix = crear_matriz_mmd(all_plrs)
@@ -105,13 +99,7 @@ def flare(c, total_clients, byz_workers):
             trust_scores_array.append(trust_scores.tolist())
 
             # Federar
-            if c.aggregation == 'fedavg':
-                aggr_model = aggregate_models(all_updates, trust_scores)
-            else:
-                aggr_model = equal_aggregate_models(all_updates)
-            global_net.load_state_dict(aggr_model)
-            for i, ap in enumerate(aprendedores):
-                ap.net.load_state_dict(global_net.state_dict())
+            update_model_with_weighted_gradients(global_net, [list(u.values()) for u in all_updates], trust_scores)
 
             # Gardar resultados
             gardar_puntuacions(trust_scores_array, path, byz_workers)
@@ -124,8 +112,7 @@ def flare(c, total_clients, byz_workers):
             #############################################################################
             # PRECISIÓNS
             # CALCULAR A PRECISIÓN DO ENTRENO CADA 20 ITERACIÓNS
-            if (e + 1) % 4 == 0:
-                testear_precisions(global_test_data_loader, global_net, device, e, precision_array, path,
-                                   target_backdoor_dba, c.byz_type)
+            testear_precisions(global_test_data_loader, global_net, device, e, precision_array, path,
+                               target_backdoor_dba, c.byz_type)
 
         resumo_final(global_test_data_loader, global_net, device)
