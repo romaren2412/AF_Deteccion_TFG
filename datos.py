@@ -61,10 +61,10 @@ def preparar_datos():
     # Definir la transformación para normalizar los datos
     transform = transforms.Compose([transforms.ToTensor()])
     # Cargar el conjunto de datos de entrenamiento
-    train_data = torchvision.datasets.MNIST(root='MNIST/data', train=True, transform=transform, download=True)
+    train_data = torchvision.datasets.MNIST(root='data', train=True, transform=transform, download=True)
     train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=60000, shuffle=True,
                                                     generator=torch.Generator(device='cuda'))
     # Cargar el conjunto de datos de prueba
-    test_data = torchvision.datasets.MNIST(root='MNIST/data', train=False, transform=transform, download=True)
+    test_data = torchvision.datasets.MNIST(root='data', train=False, transform=transform, download=True)
     test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=500, shuffle=False)
     return train_data_loader, test_data_loader, test_data
