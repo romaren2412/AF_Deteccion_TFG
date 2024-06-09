@@ -1,5 +1,5 @@
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as f
 
 
 def compute_trust_scores_and_normalize(client_grad_updates, server_grad_update):
@@ -17,8 +17,8 @@ def compute_trust_scores_and_normalize(client_grad_updates, server_grad_update):
 
         # COMPUTAR TRUST SCORES
         # Uso de cosine_similarity para medir la similitud de dirección entre los gradientes del cliente y del servidor
-        cosine_sim = F.cosine_similarity(client_grads.unsqueeze(0), server_grads.unsqueeze(0), dim=1)
-        trust_score = F.relu(cosine_sim)
+        cosine_sim = f.cosine_similarity(client_grads.unsqueeze(0), server_grads.unsqueeze(0), dim=1)
+        trust_score = f.relu(cosine_sim)
         trust_scores.append(trust_score.item())
 
         # NORMALIZAR MAGNITUDES

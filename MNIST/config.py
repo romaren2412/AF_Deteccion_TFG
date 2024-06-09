@@ -13,9 +13,7 @@ def parse_args():
     parser.add_argument("--seed", help="seed", default=41, type=int)
     parser.add_argument("--nbyz", help="# byzantines", default=-1, type=int)
     parser.add_argument("--byz_type", help="type of attack", default='no', type=str,
-                        choices=['no', 'partial_trim', 'full_trim', 'mean_attack', 'full_mean_attack', 'gaussian',
-                                 'dir_partial_krum_lambda', 'dir_full_krum_lambda', 'label_flip', 'backdoor', 'dba',
-                                 'edge', 'backdoor_sen_pixel'])
+                        choices=['no', 'mean_attack', 'label_flip', 'backdoor', 'dba'])
 
     # Engadidas por Roi
     parser.add_argument("--home_path", help="home path", default='', type=str)
@@ -32,15 +30,7 @@ class Config:
 
         self.nbyz = args.nbyz
         self.byz_type = args.byz_type
-        self.aggregation = args.aggregation
         self.home_path = args.home_path
-        self.tipo_exec = args.tipo_exec
-        self.silhouette = args.silhouette
-
-        if args.det_start == -1:
-            self.det_start = 5
-        else:
-            self.det_start = args.det_start
 
         self.SIZE = 10
         if args.byz_type == 'no':

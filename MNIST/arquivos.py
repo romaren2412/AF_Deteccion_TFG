@@ -39,7 +39,7 @@ def gardar_precisions_locais(path, precision_array, byzantine_index):
 def testear_precisions(testloader_global, global_net, device, e, precision_array, path, target, byz_type):
     acc_global = evaluate_accuracy(testloader_global, global_net, device)
     if byz_type in ('backdoor', 'dba', 'backdoor_sen_pixel'):
-        backdoor_sr = evaluate_backdoor(testloader_global, global_net, target, device, byz_type)
+        backdoor_sr = evaluate_backdoor(testloader_global, global_net, target, device)
         print("Epoch %02d. Train_acc %0.4f Attack_sr %0.4f" % (e, acc_global, backdoor_sr))
         precision_array.append([e, acc_global, backdoor_sr])
     else:

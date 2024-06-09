@@ -3,16 +3,12 @@ import torch.optim as optim
 import torch.utils.data
 import torchvision.transforms as transforms
 
-from byzantine import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack_modelo, scaling_attack
-from clases_redes import MnistNetFLTrust
+from byzantine import backdoor, dba, label_flip, mean_attack, scaling_attack
+from rede import MnistNet
 
 
 class MNISTTraining:
     def __init__(self, c, trainloader, test_data=None) -> None:
-        """
-        c-> configuration
-        p-> porcentaxe de uso (probas dev, deberia ser o 1 para execucions reais)
-        """
         self.c = c
         self.transform = transforms.Compose([transforms.ToTensor()])
 
@@ -24,7 +20,7 @@ class MNISTTraining:
 
         self.sl = SupervisedLearning(c, self)
         # self.net = MnistNetFLARE(num_channels=1, num_outputs=10).to(self.device)
-        self.net = MnistNetFLTrust().to(self.device)
+        self.net = MnistNet().to(self.device)
 
         self.dba_index = None
         self.byz = False
@@ -67,12 +63,8 @@ class SupervisedLearning:
         if self.ap.byz:
             if type_attack == "backdoor":
                 return backdoor(data, target)
-            elif type_attack == "backdoor_sen_pixel":
-                return backdoor_sen_pixel(data, target)
             elif type_attack == "dba":
                 return dba(data, target, self.ap.dba_index)
-            elif type_attack == "edge":
-                return edge(data, target)
             elif type_attack == "label_flip":
                 return label_flip(data)
         return data
@@ -80,7 +72,7 @@ class SupervisedLearning:
     def untargeted_attack(self, type_attack):
         if self.ap.byz:
             if type_attack == "mean_attack":
-                mean_attack_modelo(self.ap.net)
+                mean_attack(self.ap.net)
             if type_attack in ("backdoor", "dba"):
                 scaling_attack(self.ap.net)
 
@@ -129,9 +121,8 @@ class SupervisedLearning:
         return acc
 
 
-def inicializar_global_model(num_channels, num_outputs, device):
-    # model = MnistNetFLARE(num_channels=num_channels, num_outputs=num_outputs)
-    model = MnistNetFLTrust()
+def inicializar_global_model(device):
+    model = MnistNet()
     return model.to(device)
 
 
