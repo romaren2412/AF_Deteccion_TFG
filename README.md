@@ -14,5 +14,5 @@ Explicación básica dos arquivos:
 Arquivos comúns:
 - aggregation.py: Contén a implementación dos diferentes métodos de agregación Federados
 - calculos_FLARE.py: Contén a implementación das funcións de cálculo de puntuacións Flare
-- clases_redes.py: Contén as clases das redes empregadas
 - evaluate.py: Contén a implementación das funcións de avaliación
+- rede.py: Contén as clases das redes empregadas

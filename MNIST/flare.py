@@ -47,7 +47,7 @@ def flare(c, total_clients, byz_workers):
         ####################################################################################################
 
         # ARQUITECTURA DO MODELO - CNN
-        global_net = inicializar_global_model(1, 10, device, aux_loader, c.LR)
+        global_net = inicializar_global_model(device, aux_loader, c.LR)
         aprendedores = create_local_models(len(total_clients), c, worker_loaders, test_data, byz_workers, global_net)
 
         ####################################################################################################

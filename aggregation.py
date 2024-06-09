@@ -15,20 +15,3 @@ def update_model_with_weighted_gradients(net, updates, trust_scores):
         for param, weighted_grad in zip(net.parameters(), weighted_gradient_sum):
             if param.requires_grad:
                 param.data += weighted_grad
-
-
-def update_model_with_equal_gradients(net, updates):
-    equal_pond = 1 / len(updates)
-    with torch.no_grad():
-        # Inicializar la actualización ponderada global como cero
-        weighted_gradient_sum = [torch.zeros_like(param) for param in net.parameters()]
-
-        # Sumar los gradientes ponderados globalmente
-        for update in updates:
-            for param, up, sum_grad in zip(net.parameters(), update, weighted_gradient_sum):
-                sum_grad += up * equal_pond
-
-        # Aplicar la actualización al modelo global
-        for param, weighted_grad in zip(net.parameters(), weighted_gradient_sum):
-            if param.requires_grad:
-                param.data += weighted_grad

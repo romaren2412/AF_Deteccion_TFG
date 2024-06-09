@@ -4,8 +4,8 @@ import torchvision.transforms as transforms
 import torch.utils.data
 import torch.nn as nn
 
-from MNIST.byzantine import backdoor, backdoor_sen_pixel, dba, edge, label_flip, mean_attack_v2, scaling_attack
-from clases_redes import MnistNetFLARE, MnistNetFLTrust
+from MNIST.byzantine import backdoor, dba, label_flip, mean_attack, scaling_attack
+from rede import MnistNet
 
 
 class MNISTTraining:
@@ -24,8 +24,7 @@ class MNISTTraining:
         self.epochs = c.EPOCH
 
         self.sl = SupervisedLearning(c, self)
-        # self.net = MnistNetFLARE(num_channels=1, num_outputs=10).to(self.device)
-        self.net = MnistNetFLTrust().to(self.device)
+        self.net = MnistNet().to(self.device)
 
         self.dba_index = None
         self.byz = False
@@ -66,12 +65,8 @@ class SupervisedLearning:
         if self.ap.byz:
             if type_attack == "backdoor":
                 return backdoor(data, target)
-            elif type_attack == "backdoor_sen_pixel":
-                return backdoor_sen_pixel(data, target)
             elif type_attack == "dba":
                 return dba(data, target, self.ap.dba_index)
-            elif type_attack == "edge":
-                return edge(data, target)
             elif type_attack == "label_flip":
                 return label_flip(data)
         return data
@@ -79,7 +74,7 @@ class SupervisedLearning:
     def untargeted_attack(self, type_attack):
         if self.ap.byz:
             if type_attack == "mean_attack":
-                mean_attack_v2(self.ap.net)
+                mean_attack(self.ap.net)
             elif type_attack in ("dba", "backdoor"):
                 scaling_attack(self.ap.net)
 
@@ -111,9 +106,8 @@ class SupervisedLearning:
         return acc
 
 
-def inicializar_global_model(num_channels, num_outputs, device, aux_loader, lr):
-    # model = MnistNetFLARE(num_channels=num_channels, num_outputs=num_outputs)
-    model = MnistNetFLTrust()
+def inicializar_global_model(device, aux_loader, lr):
+    model = MnistNet()
     model.to(device)
     return pretrain_global_model(model, aux_loader, device, lr)
 
