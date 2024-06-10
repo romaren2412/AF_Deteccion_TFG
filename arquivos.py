@@ -28,3 +28,4 @@ def testear_precisions(testloader_global, global_net, device, e, precision_array
 def resumo_final(test_data_loader, net, device, e):
     test_accuracy = evaluate_accuracy(test_data_loader, net, device)
     print("Epoch %02d. Test_acc %0.4f" % (e, test_accuracy))
+

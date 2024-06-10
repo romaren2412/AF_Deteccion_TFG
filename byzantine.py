@@ -8,9 +8,9 @@ def select_byzantine_range(t):
         return trim_partial
     elif t == 'full_trim':
         return trim_full
-    elif t == 'dir_partial_krum_lambda':
+    elif t == 'partial_krum':
         return krum_partial
-    elif t == 'dir_full_krum_lambda':
+    elif t == 'full_krum':
         return krum_full
     elif t == 'mean_attack':
         return mean_attack

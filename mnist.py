@@ -5,7 +5,7 @@ from arquivos import *
 from byzantine import *
 from rede import MnistNet
 from datos import *
-from np_aggregation import select_aggregation
+from aggregation import select_aggregation
 
 
 def adestrar(args, total_clients):
