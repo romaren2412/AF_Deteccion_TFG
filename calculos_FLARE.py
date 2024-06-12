@@ -50,3 +50,13 @@ def extraer_plrs(model, data_loader, device):
             plr = model.extraer_plr(inputs)
 
     return plr.detach()
+
+
+def extraer_plrs_tb(model, data_loader, device):
+    model.eval()
+    with torch.no_grad():
+        inputs, _ = data_loader
+        inputs = inputs.to(device)
+        plr = model.extraer_plr(inputs)
+
+    return plr.detach()

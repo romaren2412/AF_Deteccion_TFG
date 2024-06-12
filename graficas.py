@@ -3,10 +3,6 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import MaxNLocator
 
-from config import parse_args
-
-args = parse_args()
-
 
 def cargar_datos(ruta):
     """ Carga las puntuaciones y los encabezados desde un archivo CSV """
@@ -18,7 +14,7 @@ def cargar_datos(ruta):
 
 def calcular_medias_por_epoca(ruta):
     headers, scores = cargar_datos(ruta)
-    """Calcula las medias de los clientes benignos y bizantinos para cada √©poca"""
+    """Calcula las medias de los clientes benignos y bizantinos para cada Època"""
     num_epochs = scores.shape[0]
     num_clients = scores.shape[1]
 
@@ -35,20 +31,20 @@ def calcular_medias_por_epoca(ruta):
     return benign_means, byzantine_means
 
 
-def plot_media_por_cliente(ruta):
+def plot_media_por_cliente(ruta, attack_type, gardar=False, save_path=None):
     headers, scores = cargar_datos(ruta)
-    """ Gr√°fica A: Muestra la media de cada cliente en un gr√°fico de barras """
+    """ Gr·fica A: Muestra la media de cada cliente en un gr·fico de barras """
     mean_scores = np.mean(scores, axis=0)
     indices = np.arange(len(mean_scores))
 
-    # Colores seg√∫n benignos o bizantinos
+    # Colores seg˙n benignos o bizantinos
     colors = ['red' if 'Byz' in header else 'green' for header in headers]
 
     plt.bar(indices, mean_scores, color=colors)
     plt.xlabel('Cliente')
-    plt.ylabel('Media de Puntuaci√≥n')
-    plt.yscale('log')
-    plt.title('Media de Puntuaci√≥ns por Cliente')
+    plt.ylabel('Media de PuntuaciÛn')
+    # plt.yscale('log')
+    plt.title(f'Media de PuntuaciÛns por Cliente - {attack_type}')
     plt.xticks(indices, [f'#{index}' for index in indices])
 
     if gardar:
@@ -56,20 +52,20 @@ def plot_media_por_cliente(ruta):
     plt.show()
 
 
-def plot_evolucion_medias(ruta):
-    """ Gr√°fica B: Muestra la evoluci√≥n de las medias de los bizantinos y benignos a lo largo de las √©pocas """
+def plot_evolucion_medias(ruta, attack_type, gardar=False, save_path=None):
+    """ Gr·fica B: Muestra la evoluciÛn de las medias de los bizantinos y benignos a lo largo de las Èpocas """
     mean_benign, mean_byzantine = calcular_medias_por_epoca(ruta)
 
-    if all(x == 0 for x in mean_byzantine):
+    if attack_type == 'no':
         plt.plot(mean_benign, label='Media de Benignos', color='green', marker='o')
     else:
         plt.plot(mean_benign, label='Media de Benignos', color='green', marker='o')
         plt.plot(mean_byzantine, label='Media de Bizantinos', color='red', marker='x')
 
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.xlabel('√âpoca')
-    plt.ylabel('Media de Puntuaci√≥n')
-    plt.title(f'Evoluci√≥n de las Medias de Puntuaciones - {attack_type}')
+    plt.xlabel('…poca')
+    plt.ylabel('Media de PuntuaciÛn')
+    plt.title(f'EvoluciÛn de las Medias de Puntuaciones - {attack_type}')
     plt.legend()
 
     if gardar:
@@ -77,36 +73,36 @@ def plot_evolucion_medias(ruta):
     plt.show()
 
 
-def debuxar_diferencias_precision(ruta):
+def debuxar_diferencias_precision(ruta, gardar=False):
     # Cargar datos desde un archivo CSV
     data = pd.read_csv(ruta + '/acc_comp.csv')
     ataque = ruta.split('/')[-1]
 
-    # Crear un gr√°fico de l√≠neas para ACC_FedAvg y ACC_Flare
+    # Crear un gr·fico de lÌneas para ACC_FedAvg y ACC_Flare
     plt.figure(figsize=(10, 6))
-    plt.plot(data['Iteracions'], data['ACC_Global'], label='ACC_FedAvg', marker='o', linestyle='-', color='gray')
-    plt.plot(data['Iteracions'], data['ACC_FLARE'], label='ACC_Flare', marker='x', linestyle='-', color='blue')
+    plt.plot(data['Iteracions'], data['ACC_Global'], label='ACC_FedAvg', marker='o', linestyle='--', color='gray')
+    plt.plot(data['Iteracions'], data['ACC_FLTrust'], label='ACC_FLTrust', marker='x', linestyle='-', color='blue')
 
-    if ataque == 'backdoor':
-        # Trazar tambi√©n las m√©tricas de ASR si es un backdoor
+    if ataque in ('backdoor', 'dba'):
+        # Trazar tambiÈn las mÈtricas de ASR si es un backdoor
         plt.plot(data['Iteracions'], data['ASR'], label='ASR_FedAvg', linestyle='dotted',
                  color='gray')
-        plt.plot(data['Iteracions'], data['ASR_FLARE'], label='ASR_Flare', linestyle='dotted', color='blue')
+        plt.plot(data['Iteracions'], data['ASR_FLTrust'], label='ASR_Flare', linestyle='dotted', color='blue')
 
-    # A√±adiendo t√≠tulo y etiquetas
-    plt.title('FedAvg VS Flare - {}'.format(ataque))
+    # AÒadiendo tÌtulo y etiquetas
+    plt.title('FedAvg VS FLTrust - {}'.format(ataque))
     plt.xlabel('Iteracions')
     plt.ylabel('Precision')
     plt.legend()
 
-    # Configurar el eje x para mostrar solo n√∫meros enteros
+    # Configurar el eje x para mostrar solo n˙meros enteros
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
     if gardar:
         plt.savefig(ruta + '/plot.png')
     plt.show()
 
 
-def debuxar_precision(ruta):
+def debuxar_precision(ruta, attack_type, gardar=False, save_path=None):
     # Cargar datos desde un archivo CSV
     datos = pd.read_csv(ruta)
     asr = False
@@ -116,32 +112,19 @@ def debuxar_precision(ruta):
     else:
         datos.columns = ["Iteracion", "ACC_Global"]
 
-    # Crear la gr√°fica
+    # Crear la gr·fica
     plt.figure(figsize=(10, 6))
     plt.plot(datos['Iteracion'], datos['ACC_Global'], marker='^', label='ACC Global')
     if asr:
-        plt.plot(datos['Iteracion'], datos['ASR'], marker='o', color='red', label='√âxito do ataque',
+        plt.plot(datos['Iteracion'], datos['ASR'], marker='o', color='red', label='…xito do ataque',
                  linestyle='dashed')
 
-    # Configurar la gr√°fica
-    plt.title('Evoluci√≥n da precisi√≥n - {}'.format(attack_type))
-    plt.xlabel('√âpocas')
-    plt.ylabel('Precisi√≥n')
+    # Configurar la gr·fica
+    plt.title('EvoluciÛn da precisiÛn - {}'.format(attack_type))
+    plt.xlabel('…pocas')
+    plt.ylabel('PrecisiÛn')
     plt.legend()
 
     if gardar:
         plt.savefig(save_path + '/precisions.png')
     plt.show()
-
-
-if __name__ == "__main__":
-    gardar = True
-
-    path = 'PROBAS/ProbasDef/Flare/no'
-    save_path = path
-    attack_type = path.split('/')[-1]
-
-    # plot_media_por_cliente(path + '/score.csv')
-    # plot_evolucion_medias(path + '/score.csv')
-    # debuxar_diferencias_precision('PROBAS_REF/Probas_Referencia/backdoor')
-    # debuxar_precision(path + '/acc.csv')
