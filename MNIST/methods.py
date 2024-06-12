@@ -19,7 +19,6 @@ class MNISTTraining:
         self.epochs = c.EPOCH
 
         self.sl = SupervisedLearning(c, self)
-        # self.net = MnistNetFLARE(num_channels=1, num_outputs=10).to(self.device)
         self.net = MnistNet().to(self.device)
 
         self.dba_index = None

@@ -18,6 +18,23 @@ def evaluate_accuracy(data_loader, model, device):
     return accuracy
 
 
+def evaluate_accuracy_un_batch(data_loader, model, device):
+    model.eval()
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        data, label = data_loader
+        data, label = data.to(device).float(), label.to(device).float()
+        output = model(data)
+        _, predicted = torch.max(output.data, 1)
+        total += label.size(0)
+        correct += (predicted == label).sum().item()
+
+    accuracy = correct / total
+    return accuracy
+
+
 def evaluate_backdoor(data_iterator, net, target, device):
     net.eval()
     correct_predictions = 0

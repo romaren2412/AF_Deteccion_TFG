@@ -27,7 +27,7 @@ def fltrust(c, total_clients, byz_workers):
         device = torch.device('cuda', c.gpu)
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    path = os.path.join('MNIST/PROBAS/', c.home_path, timestamp, c.byz_type)
+    path = os.path.join('MNIST/PROBAS_REF/', c.home_path, timestamp, c.byz_type)
     if not os.path.exists(path):
         os.makedirs(path)
 

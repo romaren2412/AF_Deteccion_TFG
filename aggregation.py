@@ -1,3 +1,4 @@
+# coding: utf-8
 import torch
 
 
@@ -7,7 +8,7 @@ def update_model_with_weighted_gradients(net, normalized_grad_updates, trust_sco
         if total_trust == 0:
             raise ValueError("La suma total de los trust scores no puede ser cero.")
 
-        # Inicializar la actualización ponderada global como cero
+        # Inicializar la actualizaciÃ³n ponderada global como cero
         weighted_gradient_sum = [torch.zeros_like(param) for param in net.parameters()]
 
         # Ponderar los gradientes por los trust scores y sumarlos a la suma ponderada global
@@ -16,8 +17,7 @@ def update_model_with_weighted_gradients(net, normalized_grad_updates, trust_sco
             for param, norm_grad, sum_grad in zip(net.parameters(), normalized_grads, weighted_gradient_sum):
                 sum_grad += norm_grad * weight
 
-        # Aplicar la actualización al modelo global
+        # Aplicar la actualizaciÃ³n al modelo global
         for param, weighted_grad in zip(net.parameters(), weighted_gradient_sum):
             if param.requires_grad:
                 param.data += lr * weighted_grad
-
