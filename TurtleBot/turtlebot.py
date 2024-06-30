@@ -27,7 +27,7 @@ class TurtlebotTraining:
         self.sl = SupervisedLearning(c, self)
         self.criterion = nn.MSELoss()
 
-        self.selected_data = c.DATA_TB_5
+        self.selected_data = c.DATA_TB_IGUAIS if c.tipo_ben == c.tipo_mal else c.DATA_TB_5
 
         data_ubi, percent, partida = self.selected_data[self.c.RANK + 1]
         print(f'[INFO USER {self.c.RANK}] Cargando {data_ubi}')
@@ -36,7 +36,6 @@ class TurtlebotTraining:
 
         # Concatenamos los datos de todos los ficheros
         all_data = np.concatenate([np.loadtxt(file) for file in file_list])
-        # np.random.shuffle(all_data)
 
         # Creamos la variable X que contiene las medidas del lidar y la variable y que contiene la velocidad lineal y angular
         # del robot para cada muestra de medidas

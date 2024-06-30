@@ -1,5 +1,5 @@
-from FLDetector import fl_detector
-from Miguel.config import parse_args, Config
+from fld_tb import fl_detector
+from config import parse_args, Config
 
 if __name__ == "__main__":
     c = Config()

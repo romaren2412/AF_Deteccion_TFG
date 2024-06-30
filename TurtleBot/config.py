@@ -1,5 +1,6 @@
 import torch
 import argparse
+import numpy as np
 
 
 def parse_args():
@@ -33,6 +34,8 @@ class Config:
         # GENERAL STUFF
         self.SIZE = 5
         self.RANK = 0
+        self.tipo_ben = args.tipo_ben
+        self.tipo_mal = args.tipo_mal
 
         self.DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -48,30 +51,42 @@ class Config:
         self.FLDET_START = 50
 
         self.DATA_TB = {
-            1: ("../data/datos_turtlebot_1/", 0.1, 0),
-            2: ("../data/datos_turtlebot_1/", 0.1, 1),
-            3: ("../data/datos_turtlebot_1/", 0.1, 2),
-            4: ("../data/datos_turtlebot_1/", 0.1, 3),
-            5: ("../data/datos_turtlebot_2/", 0.1, 0),
-            6: ("../data/datos_turtlebot_der/", 0.1, 0),
-            7: ("../data/datos_turtlebot_izq/", 0.1, 0)}
+            1: ("./data/datos_turtlebot_1/", 0.1, 0),
+            2: ("./data/datos_turtlebot_1/", 0.1, 1),
+            3: ("./data/datos_turtlebot_1/", 0.1, 2),
+            4: ("./data/datos_turtlebot_1/", 0.1, 3),
+            5: ("./data/datos_turtlebot_2/", 0.1, 0),
+            6: ("./data/datos_turtlebot_der/", 0.1, 0),
+            7: ("./data/datos_turtlebot_izq/", 0.1, 0)}
 
         data_dic = {
-            '1': "../data/datos_turtlebot_1/",
-            '2': "../data/datos_turtlebot_2/",
-            'der': "../data/datos_turtlebot_der/",
-            'izq': "../data/datos_turtlebot_izq/"
+            '1': "./data/datos_turtlebot_1/",
+            '2': "./data/datos_turtlebot_2/",
+            'der': "./data/datos_turtlebot_der/",
+            'izq': "./data/datos_turtlebot_izq/"
         }
 
         data_ben = data_dic[args.tipo_ben]
         data_mal = data_dic[args.tipo_mal]
 
+        random_indexes = np.random.choice(4, 4, replace=False)
+        random_indexes2 = np.random.choice(5, 5, replace=False)
+
         self.DATA_TB_5 = {
-            1: (data_mal, 0.1, 0),
-            2: (data_ben, 0.1, 0),
-            3: (data_ben, 0.1, 1),
-            4: (data_ben, 0.1, 2),
-            5: (data_ben, 0.1, 3)}
+            1: (data_mal, 0.25, np.random.randint(0, 4)),
+            2: (data_ben, 0.25, random_indexes[0]),
+            3: (data_ben, 0.25, random_indexes[1]),
+            4: (data_ben, 0.25, random_indexes[2]),
+            5: (data_ben, 0.25, random_indexes[3])
+        }
+
+        self.DATA_TB_IGUAIS = {
+            1: (data_mal, 0.2, random_indexes2[0]),
+            2: (data_ben, 0.2, random_indexes2[1]),
+            3: (data_ben, 0.2, random_indexes2[2]),
+            4: (data_ben, 0.2, random_indexes2[3]),
+            5: (data_ben, 0.2, random_indexes2[4]),
+        }
 
         self.DATA_TB_4_Dif = {
             1: (data_dic['1'], 0.1, 0),

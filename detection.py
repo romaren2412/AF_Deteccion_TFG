@@ -69,21 +69,6 @@ def detection(score, para_string, epoch, clients, byz_undetected_index, path_fil
     if not os.path.exists(path_file):
         os.makedirs(path_file)
 
-    # CONTROL DE SILUETA
-    # SILUETA INSUFICIENTE
-    """
-    if silhouette < args.silhouette:
-        print('Ataque identificado pero con pouca seguridade (silhouette)')
-        with open(path_file + '/Ataques_Detectados.txt', 'a+') as f:
-            f.write("\n------\n" + para_string + "\n")
-            f.write("Ataque identificado pero con pouca seguridade (silhouette) na iteración " + str(iter) + "\n")
-            f.write("acc %0.4f; recall %0.4f; fpr %0.4f; fnr %0.4f;\n" % (acc, recall, fpr, fnr))
-            f.write("detected_clients: " + str(detected_clients) + "\n")
-            f.write("silhouette: " + str(silhouette) + "\n")
-        return []
-    """
-
-    # SILUETA SUFICIENTE
     print('Ataque confirmado!')
     # Imprimir resultados en fichero de texto
     with open(path_file + '/Ataques_Detectados.txt', 'a+') as f:
@@ -105,8 +90,8 @@ def detection1(score, b=10, k=4):
     :param k: Número de clusters posibles
     :return:
     """
-    select_k = 1
-    ks = range(1, k)  # número de clusters posibles
+    select_k = 0
+    ks = range(1, k+1)  # número de clusters posibles
     gaps = np.zeros(len(ks))  # vector de gaps
     gap_diff = np.zeros(len(ks) - 1)  # vector de diferencias de gaps
     sdk = np.zeros(len(ks))  # vector de desviacións estándar de los gaps
@@ -155,7 +140,7 @@ def detection1(score, b=10, k=4):
             break
 
     # Se hai un cluster, non hai ataque
-    if select_k == 1:
+    if select_k == 0:
         print('No attack detected!')
         return 0
     else:
