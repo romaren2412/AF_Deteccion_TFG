@@ -84,3 +84,36 @@ def evaluate_backdoor(data_iterator, net, target, device):
 
     accuracy = correct_predictions / total_samples
     return accuracy
+
+
+def evaluate_edge_backdoor(data, net, device):
+    """
+    Evalúa la precisión del modelo en el conjunto de datos de puerta trasera (edge).
+
+    Parámetros:
+    - data: Datos de entrada.
+    - net: Modelo a evaluar.
+    - device: Dispositivo de ejecución (por ejemplo, 'cuda' para GPU, 'cpu' para CPU).
+
+    Retorna:
+    - accuracy: Precisión del modelo en el conjunto de datos de puerta trasera (edge).
+    """
+    net.eval()  # Establece el modelo en modo de evaluación
+    with torch.no_grad():  # Desactiva el cálculo del gradiente durante la evaluación
+        data = data.to(device)
+
+        # Etiquetas para la puerta trasera (edge)
+        label = torch.ones(len(data), dtype=torch.long).to(device)
+
+        # Propagación hacia adelante
+        output = net(data)
+
+        # Obtén las predicciones
+        _, predictions = torch.max(output, 1)
+
+        # Evalúa la precisión
+        correct_predictions = (predictions == label).sum().item()
+        total_samples = len(data)
+        accuracy = correct_predictions / total_samples
+
+    return accuracy

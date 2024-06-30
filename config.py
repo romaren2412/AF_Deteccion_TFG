@@ -12,9 +12,12 @@ def parse_args():
     parser.add_argument("--seed", help="seed", default=41, type=int)
     parser.add_argument("--nbyz", help="# byzantines", default=28, type=int)
     parser.add_argument("--byz_type", help="type of attack", default='no', type=str,
-                        choices=['no', 'mean_attack', 'backdoor', 'partial_trim', 'full_trim',
+                        choices=['no', 'mean_attack', 'label_flip', 'edge', 'backdoor', 'partial_trim', 'full_trim',
                                  'partial_krum', 'full_krum'])
     parser.add_argument("--aggregation", help="aggregation rule", default='simple_mean', type=str,
-                        choices=['simple_mean', 'trim', 'krum', 'median', 'bulyan', 'multikrum', 'multibulyan'])
+                        choices=['simple_mean',
+                                 'trim', 'krum', 'median',
+                                 'bulyan', 'multikrum',
+                                 'multibulyan', 'multibulyan_var'])
     parser.add_argument("--home_path", help="home path", default='', type=str)
     return parser.parse_args()

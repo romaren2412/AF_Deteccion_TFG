@@ -13,10 +13,6 @@ class MnistNet(nn.Module):
         self.relu2 = nn.ReLU()
         self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.flatten = nn.Flatten()
-        # Calculate the size of the output from the last max pooling layer
-        # After first conv and pool: (28 - 3) + 1 = 26, then 26 / 2 = 13 (because of max pooling)
-        # After second conv and pool: (13 - 3) + 1 = 11, then 11 / 2 = 5.5 which is rounded down to 5
-        # The output size is 5x5x5
         self.fc1 = nn.Linear(5 * 5 * 5, 100)  # Adjust the input features
         self.relu3 = nn.ReLU()
         self.fc2 = nn.Linear(100, num_outputs)

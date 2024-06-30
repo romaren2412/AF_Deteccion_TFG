@@ -1,4 +1,5 @@
 import torch
+import csv
 
 
 ###########################################################################################
@@ -17,6 +18,8 @@ def select_aggregation(t, param_list, net, lr, b):
     elif t == 'multikrum':
         return multikrum(param_list, net, lr, b)
     elif t == 'multibulyan':
+        return multibulyan(param_list, net, lr, b)
+    elif t == 'multibulyan_var':
         return multibulyan2(param_list, net, lr, b)
     else:
         raise NotImplementedError
@@ -100,8 +103,23 @@ def krum(param_list, net, lr, b):
     min_idx = int(scores.argmin(dim=0).item())
     krum_tensor = param_list[min_idx].view(-1, 1)
 
-    """
-    Guardar las puntuaciones en un archivo CSV
+    # Actualizar o modelo global
+    aggregate(krum_tensor, net, lr)
+    return krum_tensor
+
+
+def krum_gardando_seleccion(param_list, net, lr, b, path, epoch):
+
+    # ATOPAR O MELLOR GRADIENTE
+    q = len(b)  # número de dispositivos byzantinos
+    # Calcular a distancia de cada gradiente ao resto dos gradientes
+    v = torch.cat(param_list, dim=1)
+    scores = torch.tensor([score(gradient, v, q) for gradient in param_list])
+
+    # Escoller o gradiente coa menor distancia
+    min_idx = int(scores.argmin(dim=0).item())
+    krum_tensor = param_list[min_idx].view(-1, 1)
+
     with open(path + "/score_krum.csv", mode='a', newline='') as file:
         writer = csv.writer(file)
         if epoch == 0:  # Añadir encabezados en la primera iteración
@@ -122,7 +140,7 @@ def krum(param_list, net, lr, b):
     # Imprimir si o gradiente escollido é byzantino
     if min_idx in b:
         print(f"O gradiente escollido é byzantino: {min_idx}")
-    """
+
     # Actualizar o modelo global
     aggregate(krum_tensor, net, lr)
     return krum_tensor

@@ -1,11 +1,13 @@
 import datetime
-import torch.nn as nn
 import os
+import time
+import torch.nn as nn
+
+from aggregation import select_aggregation
 from arquivos import *
 from byzantine import *
-from rede import MnistNet
 from datos import *
-from aggregation import select_aggregation
+from rede import MnistNet
 
 
 def adestrar(args, total_clients):
@@ -27,6 +29,7 @@ def adestrar(args, total_clients):
     epochs = args.nepochs
     train_acc_list = []
     softmax_cross_entropy = nn.CrossEntropyLoss()
+    test_edge_images = edge_label = None
 
     ########################################################################################################
     # EJECUCIÓN
@@ -45,7 +48,16 @@ def adestrar(args, total_clients):
 
         # ATAQUE DIRIXIDO
         target = 0
-        each_worker_data, each_worker_label = backdoor(each_worker_data, each_worker_label, undetected_byz, target)
+        if args.byz_type == 'backdoor':
+            each_worker_data, each_worker_label = backdoor(each_worker_data, each_worker_label, undetected_byz, target)
+        elif args.byz_type == 'edge':
+            digit_edge = 7
+            indices_digit = torch.nonzero(test_data.targets == digit_edge, as_tuple=False)[:, 0]
+            images_digit = test_data.data[indices_digit, :] / 255.0
+            test_edge_images = images_digit.view(-1, 1, 28, 28).to(device)
+            edge_label = torch.ones(len(test_edge_images)).to(torch.int).to(device)
+            each_worker_data, each_worker_label = edge(each_worker_data, each_worker_label, undetected_byz,
+                                                       test_edge_images, edge_label)
 
         ####################################################################################################
         # TIPO DE ATAQUE
@@ -75,7 +87,7 @@ def adestrar(args, total_clients):
             # PRECISIÓNS
             # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
             if (e + 1) % 5 == 0:
-                testear_precisions(test_data_loader, net, device, e, train_acc_list, path, target, args.byz_type)
+                testear_precisions(test_data_loader, net, device, e, train_acc_list, path, target, args.byz_type, test_edge_images)
 
     # CALCULAR A PRECISIÓN FINAL DO TESTEO
     resumo_final(test_data_loader, net, device, e)

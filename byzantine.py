@@ -14,8 +14,10 @@ def select_byzantine_range(t):
         return krum_full
     elif t == 'mean_attack':
         return mean_attack
-    elif t == 'backdoor':
+    elif t == 'backdoor' or t == 'edge':
         return scaling_attack
+    elif t == 'label_flip':
+        return no_byz
     elif t == 'no':
         return no_byz
     else:
@@ -27,9 +29,16 @@ def no_byz(v, undetected_byz):
 
 
 def mean_attack(v, undetected_byz):
+    scaling_factor = 1
     for i in undetected_byz:
-        v[i] = -v[i]
+        v[i] = -v[i] * scaling_factor
     return v
+
+
+def label_flip(data):
+    inputs, labels = data
+    labels = (labels + 1) % 9
+    return inputs, labels
 
 
 def backdoor(each_worker_data, each_worker_label, undetected_byz, target_backdoor_dba):
@@ -61,6 +70,28 @@ def backdoor(each_worker_data, each_worker_label, undetected_byz, target_backdoo
             each_worker_data[i][example_id][0][25][25] = 1
             # Etiqueta 0 para o patrón
             each_worker_label[i][example_id] = target_backdoor_dba
+
+    return each_worker_data, each_worker_label
+
+
+def edge(each_worker_data, each_worker_label, undetected_byz, test_edge_images, label):
+    """
+    # 3. EDGE: introduce mostras específicas do número 7 (label 1) nas mostras de datos dos traballadores byzantinos.
+    :param each_worker_data:
+    :param each_worker_label:
+    :param undetected_byz: lista de clientes byzantinos
+    :param test_edge_images:
+    :param label:
+    :return: each_worker_data e each_worker_label actualizados
+    """
+    for i in undetected_byz:
+        real_data = len(each_worker_data[i]) // 4
+        edge_data = real_data * 3
+        if len(test_edge_images) < edge_data:
+            test_edge_images = test_edge_images.repeat(edge_data // len(test_edge_images) + 1, 1, 1, 1)
+            label = label.repeat(edge_data // len(label) + 1)
+        each_worker_data[i] = torch.cat((each_worker_data[i][:real_data], test_edge_images[:edge_data]), dim=0)
+        each_worker_label[i] = torch.cat((each_worker_label[i][:real_data], label[:edge_data]), dim=0)
 
     return each_worker_data, each_worker_label
 
