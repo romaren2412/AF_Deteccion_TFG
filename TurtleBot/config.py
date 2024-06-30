@@ -12,9 +12,9 @@ def parse_args():
     # learning rate
     parser.add_argument("--lr", help="learning rate", default=-1, type=float)
     # tipo de datos_d5.txt
-    parser.add_argument("--tipo_ben", help="tipo de datos_d5.txt benignos", default='1', type=str,
+    parser.add_argument("--tipo_ben", help="tipo de datos benignos", default='1', type=str,
                         choices=['1', '2', 'der', 'izq'])
-    parser.add_argument("--tipo_mal", help="tipo de datos_d5.txt maliciosos", default='2', type=str,
+    parser.add_argument("--tipo_mal", help="tipo de datos maliciosos", default='2', type=str,
                         choices=['1', '2', 'der', 'izq'])
     return parser.parse_args()
 
@@ -43,20 +43,11 @@ class Config:
 
         self.FL_FREQ = 5
 
-        self.DATA_TB = {
-            1: ("../data/datos_turtlebot_1/", 0.1, 0),
-            2: ("../data/datos_turtlebot_1/", 0.1, 1),
-            3: ("../data/datos_turtlebot_1/", 0.1, 2),
-            4: ("../data/datos_turtlebot_1/", 0.1, 3),
-            5: ("../data/datos_turtlebot_2/", 0.1, 0),
-            6: ("../data/datos_turtlebot_der/", 0.1, 0),
-            7: ("../data/datos_turtlebot_izq/", 0.1, 0)}
-
         data_dic = {
-            '1': "./data/datos_turtlebot_1/",
-            '2': "./data/datos_turtlebot_2/",
-            'der': "./data/datos_turtlebot_der/",
-            'izq': "./data/datos_turtlebot_izq/"
+            '1': "TurtleBot/data/datos_turtlebot_1/",
+            '2': "TurtleBot/data/datos_turtlebot_2/",
+            'der': "TurtleBot/data/datos_turtlebot_der/",
+            'izq': "TurtleBot/data/datos_turtlebot_izq/"
         }
 
         data_ben = data_dic[args.tipo_ben]
