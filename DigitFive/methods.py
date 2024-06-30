@@ -4,7 +4,7 @@ import torch
 import torch.optim as optim
 from torchvision import transforms
 
-from rede import DigitFiveNet
+from redes import DigitFiveNet
 
 
 class DigitFiveDatasheet:

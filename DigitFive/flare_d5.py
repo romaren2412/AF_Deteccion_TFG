@@ -7,11 +7,11 @@ from aggregation import *
 from arquivos import *
 from calculos_FLARE import *
 from methods import *
-from rede import DigitFiveNet
+from redes import DigitFiveNet
 
 
 def crear_dataset_auxiliar(num_samples=10, img_size=(16, 16), num_classes=10):
-    # Generar datos aleatorios de imagen
+    # Generar datos_d5.txt aleatorios de imagen
     images = torch.rand(num_samples, 3, img_size[0], img_size[1])
 
     # Generar etiquetas aleatorias
@@ -37,7 +37,7 @@ def flare_d5(c, total_clients, byz_workers):
     else:
         device = torch.device('cuda', c.gpu)
 
-    path = os.path.join('PROBAS_REF/', c.home_path, f"{c.data_type}_{c.extra_data_type}")
+    path = os.path.join('PROBAS_REF/', c.home_path, f"{c.data_type}+/{c.data_type}_{c.extra_data_type}")
     if not os.path.exists(path):
         os.makedirs(path)
 
@@ -89,10 +89,12 @@ def flare_d5(c, total_clients, byz_workers):
                 # EXTRACCIÓN DE PLRs
                 all_updates.append(update)
                 all_plrs.append(plr)
-                if (e + 1) % 10 == 0:
+                """
+                if (e + 1) % (c.EPOCH // 3) == 0 or (e + 1) == c.EPOCH:
                     acc = ap.sl.test(ap.net, ap.testloader)
                     print(f"[Epoca {e}, {local_epoch}] Cliente: ", str(i), " - Accuracy: ", {acc})
                     local_precision_array_ep.append(acc)
+                """
 
             # Calcular MMD
             mmd_matrix = crear_matriz_mmd(all_plrs)
@@ -113,9 +115,10 @@ def flare_d5(c, total_clients, byz_workers):
 
             #############################################################################
             # PRECISIÓNS
-            # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
-            testear_precisions(aprendedores, global_test_data_loader, global_net, device, e, precision_array, path,
-                               c.data_type, c.extra_data_type)
+            # CALCULAR A PRECISIÓN DO ENTRENO 10 veces
+            if (e + 1) % (c.EPOCH // 10) == 0 or (e + 1) == c.EPOCH:
+                testear_precisions(aprendedores, global_test_data_loader, global_net, device, e, precision_array, path,
+                                   c.data_type, c.extra_data_type)
 
         resumo_final(global_test_data_loader, global_net, device)
     return None

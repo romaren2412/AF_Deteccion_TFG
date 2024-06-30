@@ -33,10 +33,10 @@ class TurtlebotTraining:
         file_list = [os.path.join(data_ubi, file) for file in os.listdir(data_ubi) if
                      file.endswith('.txt') and not file.startswith('Read')]
 
-        # Concatenamos los datos de todos los ficheros
+        # Concatenamos los datos_d5.txt de todos los ficheros
         all_data = np.concatenate([np.loadtxt(file) for file in file_list])
 
-        # Si es servidor, barajar los datos, recortar los 50 primeros y repetirlos hasta la longitud original
+        # Si es servidor, barajar los datos_d5.txt, recortar los 50 primeros y repetirlos hasta la longitud original
         original_len = len(all_data)
         if server:
             np.random.shuffle(all_data)

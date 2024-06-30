@@ -32,15 +32,7 @@ class Config:
 
         self.nbyz = args.nbyz
         self.byz_type = args.byz_type
-        self.aggregation = args.aggregation
         self.home_path = args.home_path
-        self.tipo_exec = args.tipo_exec
-        self.silhouette = args.silhouette
-
-        if args.det_start == -1:
-            self.det_start = 5
-        else:
-            self.det_start = args.det_start
 
         self.SIZE = 10
         if args.byz_type == 'no':

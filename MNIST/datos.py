@@ -27,7 +27,7 @@ def repartir_datos(c, train_data, num_workers):
         data = data.view(1, 1, 28, 28)
         label = torch.tensor([label])
 
-        # Asignar un punto de datos a un grupo
+        # Asignar un punto de datos_d5.txt a un grupo
         upper_bound = label.item() * other_group_size + bias_weight
         lower_bound = label.item() * other_group_size
         rd = np.random.random_sample()
@@ -39,7 +39,7 @@ def repartir_datos(c, train_data, num_workers):
         else:
             worker_group = label.item()
 
-        # Asignar un punto de datos a un trabajador
+        # Asignar un punto de datos_d5.txt a un trabajador
         rd = np.random.random_sample()
         selected_worker = int(worker_group * worker_per_group + int(np.floor(rd * worker_per_group)))
         each_worker_data[selected_worker].append(data)
@@ -57,17 +57,17 @@ def repartir_datos(c, train_data, num_workers):
 
 
 def preparar_datos():
-    # Definir la transformación para normalizar los datos
+    # Definir la transformación para normalizar los datos_d5.txt
     transform = transforms.Compose([transforms.ToTensor()])
-    # Cargar el conjunto de datos de entrenamiento
+    # Cargar el conjunto de datos_d5.txt de entrenamiento
     train_data = torchvision.datasets.MNIST(root='MNIST/data', train=True, transform=transform, download=True)
-    # Cargar el conjunto de datos de prueba
+    # Cargar el conjunto de datos_d5.txt de prueba
     test_data = torchvision.datasets.MNIST(root='MNIST/data', train=False, transform=transform, download=True)
     return train_data, test_data
 
 
 def crear_dataset_auxiliar(num_samples=10, img_size=(28, 28), num_classes=10):
-    # Generar datos aleatorios de imagen
+    # Generar datos_d5.txt aleatorios de imagen
     images = torch.rand(num_samples, 1, img_size[0], img_size[1])
 
     # Generar etiquetas aleatorias

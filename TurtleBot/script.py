@@ -6,6 +6,6 @@ for tipo_ben in ['1', '2', 'der', 'izq']:
         subprocess.run(
             ["python",
                 "main.py",
-                "--home_path", "TurtleBotScript2",
+                "--home_path", "TurtleBotScript_20epochs",
                 "--tipo_ben", tipo_ben,
                 "--tipo_mal", tipo_mal])

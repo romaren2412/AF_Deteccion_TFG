@@ -5,12 +5,12 @@ import datetime
 from aggregation import *
 from arquivos import *
 from calculos_FLARE import *
-from rede import TurtlebotNet
+from redes import TurtlebotNet
 from turtlebot import *
 
 
 def crear_loader_auxiliar(num_samples=10):
-    # Generar datos aleatorios de imagen
+    # Generar datos_d5.txt aleatorios de imagen
     images = torch.rand(num_samples, 1440)
 
     return images, None
@@ -110,7 +110,7 @@ def flare_tb(c, total_clients):
             #############################################################################
             # PRECISIÓNS
             # CALCULAR A PRECISIÓN DO ENTRENO CADA 10 ITERACIÓNS
-            if (e + 1) % 10 == 0:
+            if (e + 1) % 2 == 0:
                 testear_precisions(testloader_global, global_net, device, e, precision_array, path, criterion)
 
         resumo_final(testloader_global, global_net, device, e, trust_scores_array, path, criterion)

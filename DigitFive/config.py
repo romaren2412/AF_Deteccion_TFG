@@ -18,9 +18,9 @@ def parse_args():
 
     # Engadidas por Roi
     parser.add_argument("--home_path", help="home path", default='', type=str)
-    parser.add_argument("--data_type", help="tipo de datos", default='mnistm', type=str,
+    parser.add_argument("--data_type", help="tipo de datos_d5.txt", default='mnistm', type=str,
                         choices=['mnist', 'svhn', 'syn', 'usps', 'mnistm'])
-    parser.add_argument("--extra_data_type", help="tipo de datos extra", default='mnist', type=str,
+    parser.add_argument("--extra_data_type", help="tipo de datos_d5.txt extra", default='mnist', type=str,
                         choices=['mnist', 'svhn', 'syn', 'usps', 'mnistm'])
 
     return parser.parse_args()
@@ -61,7 +61,7 @@ class Config:
         key = self.data_type
         extra_key = self.extra_data_type
         """
-        Divide los índices de un tipo de datos principal en un 80-20% para formar conjuntos de entrenamiento y prueba.
+        Divide los índices de un tipo de datos_d5.txt principal en un 80-20% para formar conjuntos de entrenamiento y prueba.
         Luego distribuye esos índices entre los clientes regulares. Posteriormente, asigna índices del extra_key al cliente extra,
         basado en el tamaño promedio de las particiones de los clientes regulares.
     

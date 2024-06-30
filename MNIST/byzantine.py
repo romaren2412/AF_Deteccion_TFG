@@ -8,7 +8,7 @@ c = Config()
 
 
 def backdoor(data, target_backdoor_dba):
-    # Duplica a primeira metade de mostras de datos de cada traballador byzantino
+    # Duplica a primeira metade de mostras de datos_d5.txt de cada traballador byzantino
     inputs, labels = data
     # REDIMENSIONAR OS DATOS PARA O BUCLE
     met = len(inputs) // 2

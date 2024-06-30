@@ -5,7 +5,7 @@ import torch.utils.data
 import torch.nn as nn
 
 from MNIST.byzantine import backdoor, dba, label_flip, mean_attack, scaling_attack
-from rede import MnistNet
+from redes import MnistNet
 
 
 class MNISTTraining:
