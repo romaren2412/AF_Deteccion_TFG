@@ -3,11 +3,11 @@ import datetime
 import torch.nn as nn
 
 from arquivos import *
-from clases_redes import MnistNet
+from redes import MnistNet
 from datos import *
 from detection import *
 from lbfgs import *
-from np_aggregation import select_aggregation
+from aggregation import simple_mean
 
 
 def fld_mnist_usps(args, total_clients, entrenamento, original_clients):
@@ -133,8 +133,7 @@ def fld_mnist_usps(args, total_clients, entrenamento, original_clients):
                 hvp = None
 
             # SELECCIONAR MÉTODO DE AGREGACIÓN
-            grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, net, lr,
-                                                undetected_byz_index, hvp)
+            grad, distance = simple_mean(old_grad_list, param_list, net, lr, undetected_byz_index, hvp)
 
             # ACTUALIZAR A DISTANCIA MALICIOSA
             if distance is not None and e >= args.det_start:

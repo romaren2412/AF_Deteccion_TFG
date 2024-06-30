@@ -16,7 +16,7 @@ class DigitFiveDatasheet:
         self.labels_root = []
         for i in num:
             try:
-                dict_mat = scipy.io.loadmat('../data/d5/' + 'data_' + str(i) + '.mat')
+                dict_mat = scipy.io.loadmat('DigitFive/data/d5/' + 'data_' + str(i) + '.mat')
             except:
                 dict_mat = scipy.io.loadmat('./data/d5/' + 'data_' + str(i) + '.mat')
             l = dict_mat["labels"][0]  # .astype(float)

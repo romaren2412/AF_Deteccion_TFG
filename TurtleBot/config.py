@@ -50,20 +50,11 @@ class Config:
 
         self.FLDET_START = 50
 
-        self.DATA_TB = {
-            1: ("./data/datos_turtlebot_1/", 0.1, 0),
-            2: ("./data/datos_turtlebot_1/", 0.1, 1),
-            3: ("./data/datos_turtlebot_1/", 0.1, 2),
-            4: ("./data/datos_turtlebot_1/", 0.1, 3),
-            5: ("./data/datos_turtlebot_2/", 0.1, 0),
-            6: ("./data/datos_turtlebot_der/", 0.1, 0),
-            7: ("./data/datos_turtlebot_izq/", 0.1, 0)}
-
         data_dic = {
-            '1': "./data/datos_turtlebot_1/",
-            '2': "./data/datos_turtlebot_2/",
-            'der': "./data/datos_turtlebot_der/",
-            'izq': "./data/datos_turtlebot_izq/"
+            '1': "TurtleBot/data/datos_turtlebot_1/",
+            '2': "TurtleBot/data/datos_turtlebot_2/",
+            'der': "TurtleBot/data/datos_turtlebot_der/",
+            'izq': "TurtleBot/data/datos_turtlebot_izq/"
         }
 
         data_ben = data_dic[args.tipo_ben]

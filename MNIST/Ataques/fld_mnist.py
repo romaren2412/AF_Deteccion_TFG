@@ -1,6 +1,6 @@
 import datetime
 import torch.nn as nn
-from clases_redes import MnistNet
+from redes import MnistNet
 from MNIST.Ataques.arquivos import *
 from MNIST.Ataques.byzantine import *
 from MNIST.Ataques.datos import *

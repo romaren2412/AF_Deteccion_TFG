@@ -1,11 +1,11 @@
 import datetime
 
-from clases_redes import TurtlebotNet
+from redes import TurtlebotNet
 from lbfgs import *
 from detection import *
 from turtlebot import *
 import copy
-from np_aggregation import *
+from aggregation import simple_mean
 from arquivos import *
 
 
@@ -31,7 +31,6 @@ def fl_detector(c, args, total_clients, entrenamento, original_clients, byz_work
         c.LR_tb) + ", batch_size: " + str(c.BACH_SIZE_tb) + ", nworkers: " + str(
         c.SIZE) + ", nbyz: " + str(len(byz_workers))
 
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     path = os.path.join('../PROBAS/PROBAS', args.home_path, f"4_{args.tipo_ben}", args.tipo_mal)
     if not os.path.exists(path):
         os.makedirs(path)
@@ -142,8 +141,7 @@ def fl_detector(c, args, total_clients, entrenamento, original_clients, byz_work
                 hvp = None
 
             # SELECCIONAR MÉTODO DE AGREGACIÓN
-            grad, distance = select_aggregation(args.aggregation, old_grad_list, param_list, global_net, lr,
-                                                undetected_byz_index, hvp)
+            grad, distance = simple_mean(old_grad_list, param_list, global_net, lr, undetected_byz_index, hvp)
 
             # ACTUALIZAR A DISTANCIA MALICIOSA
             if distance is not None and e > c.FLDET_START:
