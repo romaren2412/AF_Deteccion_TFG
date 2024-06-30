@@ -27,27 +27,40 @@ class TurtlebotTraining:
         self.sl = SupervisedLearning(c, self)
         self.criterion = nn.MSELoss()
 
-        self.selected_data = c.DATA_TB_5
-        data_ubi, percent, partida = self.selected_data[self.c.RANK + 1]
-        print(f'[INFO USER {self.c.RANK}] Cargando {data_ubi}')
-        file_list = [os.path.join(data_ubi, file) for file in os.listdir(data_ubi) if
-                     file.endswith('.txt') and not file.startswith('Read')]
+        if c.reparto == 'rep':
+            self.selected_data = c.DATA_TB_IGUAIS_rep if c.tipo_ben == c.tipo_mal else c.DATA_TB_5_rep
+        else:
+            self.selected_data = c.DATA_TB_IGUAIS_comp if c.tipo_ben == c.tipo_mal else c.DATA_TB_5_comp
 
-        # Concatenamos los datos de todos los ficheros
-        all_data = np.concatenate([np.loadtxt(file) for file in file_list])
+        if server and c.reparto == 'rep':
+            global_X = global_y = None
+            # Coger los 20% primeros datos de cada trabajador
+            for i in range(1, 6):
+                data_ubi, percent, partida = self.selected_data[i]
+                file_list = [os.path.join(data_ubi, file) for file in os.listdir(data_ubi) if
+                             file.endswith('.txt') and not file.startswith('Read')]
+                all_data = np.concatenate([np.loadtxt(file) for file in file_list])
+                init_range = int(percent * len(all_data))
+                X = all_data[init_range * partida:init_range * (partida + 1) + 1, 2:]
+                self.y = all_data[init_range * partida:init_range * (partida + 1) + 1, :2]
+                if i == 1:
+                    global_X = X[int(len(X) * 0.8):]
+                    global_y = self.y[int(len(self.y) * 0.8):]
+                else:
+                    global_X = np.concatenate((global_X, X[int(len(X) * 0.8):]))
+                    global_y = np.concatenate((global_y, self.y[int(len(self.y) * 0.8):]))
+            X = global_X
+            self.y = global_y
+        else:
+            data_ubi, percent, partida = self.selected_data[self.c.RANK + 1]
+            print(f'[INFO USER {self.c.RANK}] Cargando {data_ubi}')
+            file_list = [os.path.join(data_ubi, file) for file in os.listdir(data_ubi) if
+                         file.endswith('.txt') and not file.startswith('Read')]
 
-        # Si es servidor, barajar los datos, recortar los 50 primeros y repetirlos hasta la longitud original
-        original_len = len(all_data)
-        if server:
-            np.random.shuffle(all_data)
-            all_data = np.concatenate([all_data[:50]] * (original_len // 50))
-
-        # Creamos la variable X que contiene las medidas del lidar y la variable y que contiene la velocidad lineal y angular
-        # del robot para cada muestra de medidas
-
-        init_range = int(percent * len(all_data))
-        X = all_data[init_range * partida:init_range * (partida + 1) + 1, 2:]
-        self.y = all_data[init_range * partida:init_range * (partida + 1) + 1, :2]
+            all_data = np.concatenate([np.loadtxt(file) for file in file_list])
+            init_range = int(percent * len(all_data))
+            X = all_data[init_range * partida:init_range * (partida + 1) + 1, 2:]
+            self.y = all_data[init_range * partida:init_range * (partida + 1) + 1, :2]
 
         for j, i in np.argwhere(X == np.inf):
             if X[j][i] == np.inf:
@@ -67,7 +80,7 @@ class TurtlebotTraining:
 
     def create_train_test(self, index):
         print(f'[INFO USER {self.c.RANK}] Creando trainloader')
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.3,
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.2,
                                                                                 random_state=42)
 
         X_train = torch.from_numpy(self.X_train).type(torch.FloatTensor)

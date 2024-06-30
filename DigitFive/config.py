@@ -48,7 +48,7 @@ class Config:
         self.BATCH_TEST_SIZE = 5000
         if opt == '1b':
             self.BATCH_SIZE = 11000
-            self.EPOCH = 300
+            self.EPOCH = 500
 
             if args.lr == -1:
                 self.LR = 1
